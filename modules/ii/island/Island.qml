@@ -12,6 +12,7 @@ Scope {
     id: island
 
     property int screenGap: 6
+    property int islandHeight: 60
 
     Variants {
         // For each monitor
@@ -34,8 +35,7 @@ Scope {
                 WlrLayershell.namespace: "quickshell:island"
                 WlrLayershell.layer: WlrLayer.Top
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                exclusiveZone: island.screenGap + islandContent.contentHeight + island.screenGap
-                Behavior on exclusiveZone { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
+                exclusiveZone: island.screenGap + island.islandHeight + island.screenGap
 
                 anchors {
                     top: true
@@ -43,7 +43,7 @@ Scope {
                     right: true
                 }
 
-                implicitHeight: island.screenGap + islandContent.contentHeight + island.screenGap
+                implicitHeight: island.screenGap + island.islandHeight + island.screenGap
                 Behavior on implicitHeight { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
                 color: "transparent"
 

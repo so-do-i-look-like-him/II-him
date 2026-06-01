@@ -47,6 +47,7 @@ Item {
 
     Component.onCompleted: {
         updateWorkspaceOccupied();
+        island.islandHeight = islandShape.height;
     }
 
     Connections {
@@ -279,6 +280,7 @@ Item {
 
         width: islandShape.baseWidth + islandShape.recordingOffset
         height: Math.max(islandShape.baseHeight, islandShape.isRecordingNow ? 44 : 0)
+        onHeightChanged: island.islandHeight = islandShape.height
         radius: Math.round(islandShape.height / 2)
 
         // Dynamic notification dimensions (measured from content)
