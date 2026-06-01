@@ -327,7 +327,7 @@ Item {
             color: "transparent"
             border.width: 1
             border.color: Appearance.colors.colOutlineVariant
-            opacity: 0.65
+            opacity: 0.35
         }
 
         MouseArea {
