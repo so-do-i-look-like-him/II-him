@@ -309,8 +309,8 @@ Item {
             }
             return 50;
         }
-        color: "#0b0b12"
-        border.color: islandShape.osdActive ? "#6c7086" : (islandShape.notificationActive ? "#6c7086" : (isPlaying ? "#45475a" : "#313244"))
+        color: Appearance.colors.colSurfaceContainerLow
+        border.color: islandShape.osdActive ? Appearance.colors.colOutline : (islandShape.notificationActive ? Appearance.colors.colOutline : (isPlaying ? Appearance.colors.colSurfaceContainerHigh : Appearance.colors.colSurfaceContainerHighest))
         border.width: islandShape.osdActive || islandShape.notificationActive ? 2 : 0
         scale: isHovered ? 1.025 : 1.0
 
@@ -326,7 +326,7 @@ Item {
             radius: parent.radius - 1
             color: "transparent"
             border.width: 1
-            border.color: "#1f2233"
+            border.color: Appearance.colors.colOutlineVariant
             opacity: 0.65
         }
 
@@ -343,7 +343,7 @@ Item {
             Text {
                 id: hourLabel
                 text: "00"
-                color: "#cdd6f4"
+                color: Appearance.colors.colOnSurface
                 font.pixelSize: 17
                 font.bold: true
                 font.family: "Inter"
@@ -360,7 +360,7 @@ Item {
             // Colon
             Text {
                 text: ":"
-                color: "#cdd6f4"
+                color: Appearance.colors.colOnSurface
                 font.pixelSize: 17
                 font.bold: true
                 visible: !islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
@@ -373,7 +373,7 @@ Item {
             Text {
                 id: minuteLabel
                 text: "00"
-                color: "#cdd6f4"
+                color: Appearance.colors.colOnSurface
                 font.pixelSize: 17
                 font.bold: true
                 font.family: "Inter"
@@ -416,7 +416,7 @@ Item {
                         width: 5
                         height: 6 + (24 - 6) * clampedLevel
                         radius: width / 2
-                        color: "#a6e3a1"
+                        color: Appearance.colors.colPrimary
                         anchors.verticalCenter: parent.verticalCenter
 
                         Behavior on height {
@@ -460,7 +460,7 @@ Item {
                             property bool isActive: wsId === root.activeWorkspaceId
 
                             text: wsId
-                            color: isActive ? "#ffffff" : "#45475a"
+                            color: isActive ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
                             font.pixelSize: isActive ? 17 : 13
                             font.bold: isActive
                             font.family: "Inter"
@@ -527,7 +527,7 @@ Item {
                         var summary = root.currentNotification?.summary || "";
                         return summary.length > 30 ? summary.substring(0, 27) + "..." : summary;
                     }
-                    color: "#a6adc8"
+                    color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: 10
                     font.bold: true
                     font.family: "Inter"
@@ -552,7 +552,7 @@ Item {
                         body = body.replace(/\n/g, " ");
                         return body;
                     }
-                    color: "#cdd6f4"
+                    color: Appearance.colors.colOnSurface
                     font.pixelSize: 11
                     font.bold: false
                     font.family: "Inter"
@@ -581,7 +581,7 @@ Item {
                         }
                         return content.length > 48 ? content.substring(0, 45) + "..." : content;
                     }
-                    color: "#cdd6f4"
+                    color: Appearance.colors.colOnSurface
                     font.pixelSize: 11
                     font.bold: false
                     font.family: "Inter"
@@ -605,7 +605,7 @@ Item {
                     text: root.osdIcon
                     font.family: "Material Symbols Rounded"
                     font.pixelSize: 22
-                    color: "#ffffff"
+                    color: Appearance.colors.colOnSurface
                     anchors.left: parent.left
                     anchors.leftMargin: 18
                     anchors.verticalCenter: parent.verticalCenter
@@ -615,7 +615,7 @@ Item {
                 Text {
                     id: osdPercentText
                     text: Math.round(root.osdValue * 100)
-                    color: "#ffffff"
+                    color: Appearance.colors.colOnSurface
                     font.pixelSize: 17
                     font.bold: true
                     font.family: "Inter"
@@ -652,8 +652,8 @@ Item {
                         width: 16
                         height: 16
                         radius: 8
-                        color: "#1e1e2e"
-                        border.color: "#2a2a3e"
+                        color: Appearance.colors.colSurfaceContainerLowest
+                        border.color: Appearance.colors.colOutlineVariant
                         border.width: 1
                     }
 
@@ -687,7 +687,7 @@ Item {
                             ctx.stroke();
 
                             // Progress arc
-                            ctx.strokeStyle = "#ffffff";
+                            ctx.strokeStyle = Appearance.m3colors.m3onSurface;
                             ctx.beginPath();
                             ctx.arc(center, center, radius, startAngle, endAngle, false);
                             ctx.stroke();
@@ -715,8 +715,8 @@ Item {
                 id: recordingCircle
                 anchors.fill: parent
                 radius: islandShape.recordingCircleSize / 2
-                color: "#0b0b12"  // same as island background
-                border.color: "#313244"  // same as island border
+                color: Appearance.colors.colSurfaceContainerLow  // same as island background
+                border.color: Appearance.colors.colSurfaceContainerHighest  // same as island border
                 border.width: 1
 
                 // Scale animation: circle "grows out" from the island
@@ -735,7 +735,7 @@ Item {
                     width: 14
                     height: 14
                     radius: 7
-                    color: "#ff4444"
+                    color: Appearance.colors.colError
                     anchors.centerIn: parent
 
                     // Opacity pulse animation — "recording now" feel
@@ -766,8 +766,8 @@ Item {
                 id: screenShareCircle
                 anchors.fill: parent
                 radius: islandShape.recordingCircleSize / 2
-                color: "#0b0b12"
-                border.color: "#313244"
+                color: Appearance.colors.colSurfaceContainerLow
+                border.color: Appearance.colors.colSurfaceContainerHighest
                 border.width: 1
 
                 scale: (islandShape.isScreenSharingNow && !islandShape.isRecordingNow) ? 1 : 0
@@ -784,7 +784,7 @@ Item {
                     width: 14
                     height: 14
                     radius: 7
-                    color: "#ff9900"
+                    color: Appearance.colors.colTertiary
                     anchors.centerIn: parent
 
                     SequentialAnimation on opacity {
@@ -803,7 +803,7 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: "Sharing Screen"
-            color: "#ffaa44"
+            color: Appearance.colors.colTertiary
             font.pixelSize: 13
             font.bold: true
             font.family: "Inter"
@@ -817,7 +817,7 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: root.recordingSeconds > 0 ? root.formatRecordingTime(root.recordingSeconds) : "0:00"
-            color: "#ff6666"
+            color: Appearance.colors.colError
             font.pixelSize: 16
             font.bold: true
             font.family: "Inter"
