@@ -310,7 +310,8 @@ Item {
             return 50;
         }
         color: Appearance.m3colors.m3surfaceContainerLow
-        border.width: 0
+        border.color: "#1a1a1a"
+        border.width: 1
         scale: isHovered ? 1.025 : 1.0
 
         Behavior on width { NumberAnimation { duration: 520; easing.type: Easing.OutExpo } }
@@ -323,6 +324,9 @@ Item {
             anchors.margins: 1
             radius: parent.radius - 1
             color: "transparent"
+            border.width: 1
+            border.color: "#1a1a1a"
+            opacity: 0.4
         }
 
         MouseArea {
