@@ -309,7 +309,7 @@ Item {
             }
             return 50;
         }
-        color: Appearance.colors.colSurfaceContainerLow
+        color: Appearance.m3colors.m3surfaceContainerLow
         border.color: islandShape.osdActive ? Appearance.colors.colOutline : (islandShape.notificationActive ? Appearance.colors.colOutline : (isPlaying ? Appearance.colors.colSurfaceContainerHigh : Appearance.colors.colSurfaceContainerHighest))
         border.width: islandShape.osdActive || islandShape.notificationActive ? 2 : 0
         scale: isHovered ? 1.025 : 1.0
@@ -715,7 +715,7 @@ Item {
                 id: recordingCircle
                 anchors.fill: parent
                 radius: islandShape.recordingCircleSize / 2
-                color: Appearance.colors.colSurfaceContainerLow  // same as island background
+                color: Appearance.m3colors.m3surfaceContainerLow  // same as island background
                 border.color: Appearance.colors.colSurfaceContainerHighest  // same as island border
                 border.width: 1
 
@@ -735,7 +735,7 @@ Item {
                     width: 14
                     height: 14
                     radius: 7
-                    color: Appearance.colors.colError
+                    color: "#ff4444"
                     anchors.centerIn: parent
 
                     // Opacity pulse animation — "recording now" feel
@@ -766,7 +766,7 @@ Item {
                 id: screenShareCircle
                 anchors.fill: parent
                 radius: islandShape.recordingCircleSize / 2
-                color: Appearance.colors.colSurfaceContainerLow
+                color: Appearance.m3colors.m3surfaceContainerLow
                 border.color: Appearance.colors.colSurfaceContainerHighest
                 border.width: 1
 
@@ -784,7 +784,7 @@ Item {
                     width: 14
                     height: 14
                     radius: 7
-                    color: Appearance.colors.colTertiary
+                    color: "#ff9900"
                     anchors.centerIn: parent
 
                     SequentialAnimation on opacity {
@@ -803,7 +803,7 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: "Sharing Screen"
-            color: Appearance.colors.colTertiary
+            color: "#ffaa44"
             font.pixelSize: 13
             font.bold: true
             font.family: "Inter"
@@ -817,7 +817,7 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: root.recordingSeconds > 0 ? root.formatRecordingTime(root.recordingSeconds) : "0:00"
-            color: Appearance.colors.colError
+            color: "#ff6666"
             font.pixelSize: 16
             font.bold: true
             font.family: "Inter"
