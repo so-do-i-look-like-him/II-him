@@ -82,13 +82,28 @@ Item {
         function onSuperDownChanged() {
             if (!Config.options.workspaceIndicator.showOnSuperHold) return;
             if (GlobalStates.superDown) {
-                root.showWorkspace = true;
+                // Delay before showing — only show if Super is held long enough
                 workspaceAutoHidePending = false;
-                workspaceAutoHideTimer.stop();
+                workspaceShowDelayTimer.restart();
             } else {
-                // Super released — always start auto-hide timer
-                workspaceAutoHidePending = false;
-                workspaceAutoHideTimer.restart();
+                // Super released — cancel pending show, start auto-hide if already shown
+                workspaceShowDelayTimer.stop();
+                if (root.showWorkspace) {
+                    workspaceAutoHidePending = false;
+                    workspaceAutoHideTimer.restart();
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: workspaceShowDelayTimer
+        interval: 150
+        repeat: false
+        onTriggered: {
+            if (GlobalStates.superDown) {
+                root.showWorkspace = true;
+                workspaceAutoHideTimer.stop();
             }
         }
     }
