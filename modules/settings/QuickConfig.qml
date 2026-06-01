@@ -231,62 +231,31 @@ ContentPage {
         title: Translation.tr("Island & screen")
 
         ContentSubsection {
-            title: Translation.tr("Style")
+            title: Translation.tr("Screen round corner")
 
             ConfigSelectionArray {
-                currentValue: Config.options.island.cornerStyle
+                currentValue: Config.options.appearance.fakeScreenRounding
                 onSelected: newValue => {
-                    Config.options.island.cornerStyle = newValue;
+                    Config.options.appearance.fakeScreenRounding = newValue;
                 }
                 options: [
                     {
-                        displayName: Translation.tr("Hug"),
-                        icon: "line_curve",
+                        displayName: Translation.tr("No"),
+                        icon: "close",
                         value: 0
                     },
                     {
-                        displayName: Translation.tr("Float"),
-                        icon: "page_header",
+                        displayName: Translation.tr("Yes"),
+                        icon: "check",
                         value: 1
                     },
                     {
-                        displayName: Translation.tr("Rect"),
-                        icon: "toolbar",
+                        displayName: Translation.tr("When not fullscreen"),
+                        icon: "fullscreen_exit",
                         value: 2
                     }
                 ]
             }
-        }
-
-        ConfigRow {
-            ContentSubsection {
-                title: Translation.tr("Screen round corner")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.appearance.fakeScreenRounding
-                    onSelected: newValue => {
-                        Config.options.appearance.fakeScreenRounding = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("When not fullscreen"),
-                            icon: "fullscreen_exit",
-                            value: 2
-                        }
-                    ]
-                }
-            }
-            
         }
     }
 
