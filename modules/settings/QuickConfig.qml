@@ -230,54 +230,31 @@ ContentPage {
         icon: "screenshot_monitor"
         title: Translation.tr("Island & screen")
 
-        ConfigRow {
-            ContentSubsection {
-                title: Translation.tr("Position")
-                ConfigSelectionArray {
-                    currentValue: Config.options.island.vertical ? 1 : 0
-                    onSelected: newValue => {
-                        Config.options.island.vertical = newValue === 1;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Top"),
-                            icon: "arrow_upward",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Left"),
-                            icon: "arrow_back",
-                            value: 1
-                        }
-                    ]
-                }
-            }
-            ContentSubsection {
-                title: Translation.tr("Style")
+        ContentSubsection {
+            title: Translation.tr("Style")
 
-                ConfigSelectionArray {
-                    currentValue: Config.options.island.cornerStyle
-                    onSelected: newValue => {
-                        Config.options.island.cornerStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Hug"),
-                            icon: "line_curve",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Float"),
-                            icon: "page_header",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Rect"),
-                            icon: "toolbar",
-                            value: 2
-                        }
-                    ]
+            ConfigSelectionArray {
+                currentValue: Config.options.island.cornerStyle
+                onSelected: newValue => {
+                    Config.options.island.cornerStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Hug"),
+                        icon: "line_curve",
+                        value: 0
+                    },
+                    {
+                        displayName: Translation.tr("Float"),
+                        icon: "page_header",
+                        value: 1
+                    },
+                    {
+                        displayName: Translation.tr("Rect"),
+                        icon: "toolbar",
+                        value: 2
+                    }
+                ]
             }
         }
 
