@@ -652,7 +652,7 @@ Item {
                         width: 16
                         height: 16
                         radius: 8
-                        color: Appearance.colors.colSurfaceContainerLowest
+                        color: Appearance.m3colors.m3surfaceContainerHighest
                         border.color: Appearance.colors.colOutlineVariant
                         border.width: 1
                     }
@@ -687,7 +687,7 @@ Item {
                             ctx.stroke();
 
                             // Progress arc
-                            ctx.strokeStyle = Appearance.m3colors.m3onSurface;
+                            ctx.strokeStyle = Appearance.m3colors.m3outline;
                             ctx.beginPath();
                             ctx.arc(center, center, radius, startAngle, endAngle, false);
                             ctx.stroke();
