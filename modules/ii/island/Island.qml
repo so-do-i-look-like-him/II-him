@@ -34,7 +34,8 @@ Scope {
                 WlrLayershell.namespace: "quickshell:island"
                 WlrLayershell.layer: WlrLayer.Top
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                exclusiveZone: island.screenGap + 44 + island.screenGap
+                exclusiveZone: island.screenGap + islandContent.contentHeight + island.screenGap
+                Behavior on exclusiveZone { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
 
                 anchors {
                     top: true
@@ -42,7 +43,8 @@ Scope {
                     right: true
                 }
 
-                implicitHeight: island.screenGap + 44 + island.screenGap
+                implicitHeight: island.screenGap + islandContent.contentHeight + island.screenGap
+                Behavior on implicitHeight { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
                 color: "transparent"
 
                 MouseArea {
