@@ -6,15 +6,20 @@
 pkill -f "qs -c ii" 2>/dev/null
 sleep 1
 
+# Get current user's UID
+MY_UID=$(id -u)
+
 # Get Hyprland instance signature from socket directory
-HYPR_SIG=$(ls /run/user/1000/hypr/ 2>/dev/null | head -1)
+HYPR_SIG=$(ls "/run/user/$MY_UID/hypr/" 2>/dev/null | head -1)
 if [ -z "$HYPR_SIG" ]; then
     HYPR_SIG=$(ls /tmp/hypr/ 2>/dev/null | head -1)
 fi
 export HYPRLAND_INSTANCE_SIGNATURE="$HYPR_SIG"
-export WAYLAND_DISPLAY=wayland-1
+
+# Detect Wayland display dynamically
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-$(ls /run/user/$MY_UID/ 2>/dev/null | grep '^wayland-' | head -1)}"
 export XDG_SESSION_TYPE=wayland
-export XDG_RUNTIME_DIR=/run/user/1000
+export XDG_RUNTIME_DIR="/run/user/$MY_UID"
 export XDG_CURRENT_DESKTOP=Hyprland
 
 # Start fresh, fully detached from terminal

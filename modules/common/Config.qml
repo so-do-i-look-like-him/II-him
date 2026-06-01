@@ -284,6 +284,9 @@ Singleton {
                 }
             }
 
+            // Alias: bar -> island (for backwards compatibility with settings pages, vertical bar, etc.)
+            readonly property var bar: Config.options.island
+
             property JsonObject battery: JsonObject {
                 property int low: 20
                 property int critical: 5
