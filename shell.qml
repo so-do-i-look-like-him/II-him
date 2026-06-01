@@ -33,12 +33,10 @@ ShellRoot {
     }
 
 
-    // Panel families
-    property list<string> families: ["ii", "waffle", "island"]
+    // Panel families (island only)
+    property list<string> families: ["ii"]
     function cyclePanelFamily() {
-        const currentIndex = families.indexOf(Config.options.panelFamily)
-        const nextIndex = (currentIndex + 1) % families.length
-        Config.options.panelFamily = families[nextIndex]
+        // No-op: only one panel family (island)
     }
 
     component PanelFamilyLoader: LazyLoader {
@@ -50,36 +48,7 @@ ShellRoot {
     PanelFamilyLoader {
         identifier: "ii"
         component: IllogicalImpulseFamily {}
-        extraCondition: true // Restoring to default
-    }
-
-    PanelFamilyLoader {
-        identifier: "waffle"
-        component: WaffleFamily {}
-        extraCondition: true // Restoring to default
-    }
-
-    PanelFamilyLoader {
-        identifier: "island"
-        component: IllogicalImpulseFamily {}
-        // Alias: "island" loads the same family since island IS the main interface
-    }
-
-
-    // Shortcuts
-    IpcHandler {
-        target: "panelFamily"
-
-        function cycle(): void {
-            root.cyclePanelFamily()
-        }
-    }
-
-    GlobalShortcut {
-        name: "panelFamilyCycle"
-        description: "Cycles panel family"
-
-        onPressed: root.cyclePanelFamily()
+        extraCondition: true
     }
 }
 
