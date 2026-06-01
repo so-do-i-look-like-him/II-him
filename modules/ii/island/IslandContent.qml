@@ -687,7 +687,7 @@ Item {
                             ctx.stroke();
 
                             // Progress arc
-                            ctx.strokeStyle = Appearance.m3colors.m3outline;
+                            ctx.strokeStyle = Appearance.m3colors.m3onSurface;
                             ctx.beginPath();
                             ctx.arc(center, center, radius, startAngle, endAngle, false);
                             ctx.stroke();
