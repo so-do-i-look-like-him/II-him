@@ -310,24 +310,19 @@ Item {
             return 50;
         }
         color: Appearance.m3colors.m3surfaceContainerLow
-        border.color: islandShape.osdActive ? Appearance.colors.colOutline : (islandShape.notificationActive ? Appearance.colors.colOutline : (isPlaying ? Appearance.colors.colSurfaceContainerHigh : Appearance.colors.colSurfaceContainerHighest))
-        border.width: islandShape.osdActive || islandShape.notificationActive ? 2 : 0
+        border.width: 0
         scale: isHovered ? 1.025 : 1.0
 
         Behavior on width { NumberAnimation { duration: 520; easing.type: Easing.OutExpo } }
         Behavior on height { NumberAnimation { duration: 520; easing.type: Easing.OutExpo } }
         Behavior on radius { NumberAnimation { duration: 520; easing.type: Easing.OutExpo } }
         Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
-        Behavior on border.color { ColorAnimation { duration: 220 } }
 
         Rectangle {
             anchors.fill: parent
             anchors.margins: 1
             radius: parent.radius - 1
             color: "transparent"
-            border.width: 1
-            border.color: Appearance.colors.colOutlineVariant
-            opacity: 0.35
         }
 
         MouseArea {
