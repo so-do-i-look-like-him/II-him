@@ -1,91 +1,167 @@
 #!/usr/bin/env bash
 
 # Him's Full-System Installer for Illogical Impulse (ii)
-# This script sets up the entire Hyprland environment + Him's custom QuickShell config
+# Sets up the entire Hyprland environment + Him's custom QuickShell config.
+#
+# After install, the QuickShell config is consumed via a symlink:
+#   ~/.config/quickshell/ii -> $CLONE_DIR (the directory you ran this script from)
+# Local edits to QuickShell files should be made inside $CLONE_DIR and pushed
+# to the fork (https://github.com/so-do-i-look-like-him/II-him) to keep them in sync.
 
-set -e
+set -euo pipefail
 
-# Define directories
+# ----- Paths -----
 CONFIG_DIR="$HOME/.config/quickshell/ii"
 BACKUP_DIR="$HOME/.config/quickshell/ii_backup_$(date +%Y%m%d_%H%M%S)"
 CLONE_DIR=$(pwd)
+TEMP_DIR=""
 
-echo "🚀 Starting Full-System Installation for Him's Setup..."
-echo "This will install end4's dots-hyprland base, and then apply your custom QuickShell config."
+# ----- Cleanup: remove temp clone dir on exit (issue #9) -----
+cleanup() {
+    if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
+    fi
+}
+trap cleanup EXIT
 
-# 1. Ask for sudo upfront to avoid interrupting the flow
-sudo -v
-
-# 2. Check for required packages to run the base installer
-echo "📦 Ensuring git and base-devel are installed..."
-if ! command -v git &> /dev/null || ! pacman -Qs base-devel &> /dev/null; then
-    sudo pacman -S --needed --noconfirm git base-devel
-fi
-
-# 2.5. Install runtime dependencies for island features
-echo "📦 Installing island runtime dependencies..."
-sudo pacman -S --needed --noconfirm \
-    cava \
-    pipewire \
-    pipewire-pulse \
-    python3 \
-    wf-recorder \
-    ttf-inter \
-    ttf-material-symbols-variable-git \
-    2>/dev/null || echo "⚠️ Some packages may need manual installation (check AUR for ttf-inter)"
-
-# 3. Clone and run end4's base dots-hyprland installer
-echo "⚙️ Installing base dots-hyprland (end4)..."
-TEMP_DIR=$(mktemp -d)
-git clone https://github.com/end4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
-cd "$TEMP_DIR/dots-hyprland"
-
-# The original install script requires yay/paru. We assume CachyOS has yay or paru.
-if command -v yay &> /dev/null || command -v paru &> /dev/null; then
-    # We pass standard yes to automate his installer as much as possible, though it may still prompt
-    echo "Running upstream installer... (You may need to press enter or select options)"
-    ./install.sh || { echo "⚠️ Upstream installer encountered an error, but continuing..."; }
-else
-    echo "❌ Neither 'yay' nor 'paru' found. Please install an AUR helper first."
+# ----- Sanity-check the working directory (issue #6) -----
+if [ ! -d "$CLONE_DIR/modules" ] \
+   || [ ! -d "$CLONE_DIR/services" ] \
+   || [ ! -f "$CLONE_DIR/shell.qml" ]; then
+    echo "❌ $CLONE_DIR does not look like the ii-him QuickShell repo."
+    echo "   Expected to find: modules/, services/, shell.qml"
+    echo "   Please cd into your clone of so-do-i-look-like-him/II-him and re-run."
     exit 1
 fi
 
-# 4. Return to Him's custom repo
-cd "$CLONE_DIR"
+echo "🚀 Starting Full-System Installation for Him's Setup..."
+echo "This will install end-4's dots-hyprland base, then apply your custom QuickShell config."
 
-# 5. Apply Him's custom QuickShell config
+# ----- 1. Sudo upfront -----
+sudo -v
+
+# ----- 2. Ensure base tools (issue #3: robust base-devel check) -----
+echo "📦 Ensuring git and base-devel are installed..."
+NEED_PKGS=()
+command -v git &>/dev/null || NEED_PKGS+=(git)
+# `pacman -Qg` queries groups; -Qs matches a regex against any field, which is wrong here.
+if ! pacman -Qg base-devel &>/dev/null; then
+    NEED_PKGS+=(base-devel)
+fi
+if [ ${#NEED_PKGS[@]} -gt 0 ]; then
+    sudo pacman -S --needed --noconfirm "${NEED_PKGS[@]}"
+fi
+
+# ----- 2.5. Island runtime deps (issue #2 + #4: split pacman vs AUR, no error-swallowing) -----
+echo "📦 Installing island runtime dependencies..."
+REPO_PKGS=(cava pipewire pipewire-pulse python3 wf-recorder)
+AUR_PKGS=(ttf-inter ttf-material-symbols-variable-git)
+sudo pacman -S --needed --noconfirm "${REPO_PKGS[@]}"
+
+# ----- 3. Detect AUR helper (must exist before we install AUR packages) -----
+if command -v yay &>/dev/null; then
+    AUR_HELPER="yay"
+elif command -v paru &>/dev/null; then
+    AUR_HELPER="paru"
+else
+    echo "❌ Neither 'yay' nor 'paru' found."
+    echo "   Install one:  sudo pacman -S --needed base-devel git"
+    echo "   Then:         git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si"
+    exit 1
+fi
+echo "📦 Installing AUR packages with $AUR_HELPER: ${AUR_PKGS[*]}"
+$AUR_HELPER -S --needed --noconfirm "${AUR_PKGS[@]}"
+
+# ----- 4. Run end-4's base installer -----
+echo "⚙️  Installing base dots-hyprland (end-4)..."
+TEMP_DIR=$(mktemp -d)
+git clone https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
+cd "$TEMP_DIR/dots-hyprland"
+
+echo "Running upstream installer... (you may need to press enter or select options)"
+if ! ./install.sh; then
+    # Issue #5: gate continuation on explicit user confirmation
+    echo ""
+    echo "⚠️  Upstream installer failed."
+    read -rp "Continue with partial install anyway? [y/N] " CONTINUE
+    case "$CONTINUE" in
+        [yY]|[yY][eE][sS]) echo "Continuing despite upstream failure — QuickShell may not work fully." ;;
+        *) echo "Aborting. Re-run the script to retry."; exit 1 ;;
+    esac
+fi
+
+# ----- 5. Return to repo, apply Him's QuickShell config -----
+cd "$CLONE_DIR"
 echo "🎨 Applying Him's custom QuickShell (II-him)..."
 
-# Backup existing config if it exists
-if [ -d "$CONFIG_DIR" ] || [ -L "$CONFIG_DIR" ]; then
-    echo "📦 Backing up existing QuickShell config to $BACKUP_DIR..."
+# Backup existing config (issue #7: avoid mv into existing dir; idempotent if already correct symlink)
+if [ -L "$CONFIG_DIR" ] && [ "$(readlink -f "$CONFIG_DIR")" = "$CLONE_DIR" ]; then
+    echo "🔗 $CONFIG_DIR already symlinks to this repo. Skipping backup."
+elif [ -e "$CONFIG_DIR" ] || [ -L "$CONFIG_DIR" ]; then
+    rm -rf "$BACKUP_DIR" 2>/dev/null || true   # timestamped path; collision effectively impossible
     mv "$CONFIG_DIR" "$BACKUP_DIR"
+    echo "📦 Backed up existing config to $BACKUP_DIR"
 fi
 
-# Create symlink from the cloned repo to the QuickShell config location
-echo "🔗 Creating symlink: $CONFIG_DIR -> $CLONE_DIR"
+# Create symlink
 ln -s "$CLONE_DIR" "$CONFIG_DIR"
+echo "🔗 Linked $CONFIG_DIR -> $CLONE_DIR"
 
-# 6. Initialize remotes for easy syncing later
-echo "🔗 Setting up GitHub remotes for syncing..."
-git remote set-url origin https://github.com/so-do-i-look-like-him/II-him.git || true
-git remote add upstream https://github.com/end4/illogical-impulse.git || true
+# ----- 6. Initialize remotes (issue #10: idempotent upstream add) -----
+echo "🔗 Setting up GitHub remotes..."
+git remote set-url origin https://github.com/so-do-i-look-like-him/II-him.git
+# Upstream: end-4's full dots-hyprland (their QuickShell config lives inside this repo)
+if ! git remote get-url upstream &>/dev/null; then
+    git remote add upstream https://github.com/end-4/dots-hyprland.git
+fi
+git remote -v
 
-# 7. Ensure scripts are executable
+# ----- 7. Make scripts executable (issue #11: check existence, chmod all .sh) -----
 echo "🔧 Making scripts executable..."
-chmod +x "$CONFIG_DIR/scripts/detect-screenshare.sh"
-
-# 8. Restart QuickShell if running
-echo "🔄 Restarting QuickShell..."
-killall -9 qs quickshell 2>/dev/null || true
-sleep 1
-if command -v qs &> /dev/null; then
-    qs -c "$CONFIG_DIR" &
-    echo "✅ QuickShell restarted."
+SCRIPT="$CONFIG_DIR/scripts/detect-screenshare.sh"
+if [ -e "$SCRIPT" ]; then
+    chmod +x "$SCRIPT"
+else
+    echo "   ⚠️  $SCRIPT not found (was the repo updated?)"
+fi
+# Defensive: ensure any new .sh added to scripts/ is also executable
+if [ -d "$CONFIG_DIR/scripts" ]; then
+    find "$CONFIG_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} +
 fi
 
+# ----- 8. Restart QuickShell (issue #12 + #13: graceful kill, log to file) -----
+echo "🔄 Restarting QuickShell..."
+pkill -TERM -x qs         2>/dev/null || true
+pkill -TERM -x quickshell 2>/dev/null || true
+sleep 1
+pkill -KILL -x qs         2>/dev/null || true
+pkill -KILL -x quickshell 2>/dev/null || true
+
+QS_LOG="/tmp/qs-restart-$(date +%s).log"
+if command -v qs &>/dev/null; then
+    nohup qs -c "$CONFIG_DIR" >"$QS_LOG" 2>&1 &
+elif command -v quickshell &>/dev/null; then
+    nohup quickshell -c "$CONFIG_DIR" >"$QS_LOG" 2>&1 &
+else
+    echo "ℹ️  QuickShell binary not found. Start it manually: qs -c $CONFIG_DIR"
+    QS_LOG=""
+fi
+
+if [ -n "$QS_LOG" ]; then
+    sleep 2
+    if pgrep -x qs >/dev/null || pgrep -x quickshell >/dev/null; then
+        echo "✅ QuickShell restarted. Log: $QS_LOG"
+    else
+        echo "⚠️  QuickShell failed to start. Log: $QS_LOG"
+        echo "--- log tail ---"
+        tail -20 "$QS_LOG" || true
+    fi
+fi
+
+echo ""
 echo "✅ Full Installation Complete!"
-echo "Your system now has the end4 base + your personal QuickShell tweaks."
+echo "Your system now has the end-4 base + your personal QuickShell tweaks."
+echo ""
 echo "💡 Island features:"
 echo "   • Clock + Audio Visualizer (cava)"
 echo "   • Recording Indicator (wf-recorder detection)"
