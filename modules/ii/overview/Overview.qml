@@ -75,7 +75,8 @@ Scope {
             visible: GlobalStates.overviewOpen
             anchors {
                 horizontalCenter: parent.horizontalCenter
-                top: parent.top
+                verticalCenter: parent.verticalCenter
+                verticalCenterOffset: -200
             }
             spacing: -8
 

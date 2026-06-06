@@ -17,7 +17,7 @@ Item { // Wrapper
 
     readonly property string xdgConfigHome: Directories.config
     readonly property int typingDebounceInterval: 200
-    readonly property int typingResultLimit: 15 // Should be enough to cover the whole view
+    readonly property int typingResultLimit: 6
 
     property string searchingText: LauncherSearch.query
     property bool showResults: searchingText != ""
@@ -132,7 +132,7 @@ Item { // Wrapper
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: searchWidgetContent.width
-                    height: searchWidgetContent.width
+                    height: searchWidgetContent.height
                     radius: searchWidgetContent.radius
                 }
             }
@@ -162,7 +162,7 @@ Item { // Wrapper
                 id: appResults
                 visible: root.showResults
                 Layout.fillWidth: true
-                implicitHeight: Math.min(600, appResults.contentHeight + topMargin + bottomMargin)
+                implicitHeight: Math.min(320, appResults.contentHeight + topMargin + bottomMargin)
                 clip: true
                 topMargin: 10
                 bottomMargin: 10
