@@ -82,8 +82,8 @@ TEMP_DIR=$(mktemp -d)
 git clone https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
 cd "$TEMP_DIR/dots-hyprland"
 
-echo "Running upstream installer (--skip-allfiles)... (you may need to press enter or select options)"
-if ! ./setup install --skip-allfiles; then
+echo "Running upstream installer (--skip-hyprland --skip-quickshell)... (you may need to press enter or select options)"
+if ! ./setup install --skip-hyprland --skip-quickshell; then
     # Issue #5: gate continuation on explicit user confirmation
     echo ""
     echo "⚠️  Upstream installer failed."
