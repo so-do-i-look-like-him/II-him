@@ -162,6 +162,17 @@ Item {
     // --- POPOVER STATE ---
     property bool popoverOpen: false
 
+    // Close island overlay when OSD (volume/brightness) appears
+    Connections {
+        target: GlobalStates
+        function onOsdVolumeOpenChanged() {
+            if (GlobalStates.osdVolumeOpen) root.popoverOpen = false
+        }
+        function onOsdBrightnessOpenChanged() {
+            if (GlobalStates.osdBrightnessOpen) root.popoverOpen = false
+        }
+    }
+
     // --- SCREEN RECORDING DETECTION ---
     property bool isRecording: false
     property int recordingSeconds: 0
