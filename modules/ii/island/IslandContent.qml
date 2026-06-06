@@ -160,6 +160,8 @@ Item {
 
     // --- POPOVER STATE ---
     property bool popoverOpen: false
+    readonly property int expandedPanelHeight: 52   // button row height inside pill
+    readonly property int windowHeight: popoverOpen ? 64 + expandedPanelHeight + 8 : 64
 
     // --- SCREEN RECORDING DETECTION ---
     property bool isRecording: false
@@ -261,8 +263,8 @@ Item {
     // Tide-like floating island: compact idle, soft stretched media pill
     Rectangle {
         id: islandShape
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: 2.5
+        anchors.top: parent.top
+        anchors.topMargin: 12
         anchors.horizontalCenter: parent.horizontalCenter
 
         property bool isPlaying: root.mediaPlaying
@@ -275,15 +277,16 @@ Item {
         readonly property bool workspaceActive: root.showWorkspace && !root.osdActive && !root.showNotification
 
         // Base width for current state, expanded by recording indicator when active
-        readonly property int baseWidth: islandShape.osdActive ? 220 : (islandShape.notificationActive ? islandShape.notifWidth : (islandShape.workspaceActive ? 160 : (isPlaying ? 180 : (isHovered ? 156 : 126))))
+        readonly property int baseWidth: islandShape.osdActive ? 220 : (islandShape.notificationActive ? islandShape.notifWidth : (islandShape.workspaceActive ? 160 : (isPlaying ? 180 : (isHovered || root.popoverOpen ? 156 : 126))))
+        readonly property int pillWidth: root.popoverOpen ? Math.max(baseWidth, 280) : baseWidth
         readonly property int baseHeight: islandShape.osdActive ? 52 : (islandShape.notificationActive ? islandShape.notifHeight : (islandShape.workspaceActive ? 44 : (isPlaying ? 48 : (isHovered ? 44 : 40))))
         // Recording circle protrudes from the left — no width offset needed on the pill itself
         readonly property int recordingOffset: 0
         readonly property int recordingCircleSize: 40  // diameter of the protruding circles
 
-        width: islandShape.baseWidth + islandShape.recordingOffset
-        height: Math.max(islandShape.baseHeight, islandShape.isRecordingNow ? 44 : 0)
-        radius: Math.round(islandShape.height / 2)
+        width: islandShape.pillWidth + islandShape.recordingOffset
+        height: Math.max(islandShape.baseHeight, islandShape.isRecordingNow ? 44 : 0) + (root.popoverOpen ? root.expandedPanelHeight + 10 : 0)
+        radius: root.popoverOpen ? Appearance.rounding.large : Math.round(islandShape.baseHeight / 2)
 
         // Dynamic notification dimensions (measured from content)
         readonly property int notifWidth: {
@@ -832,17 +835,127 @@ Item {
             font.letterSpacing: 0.5
             anchors.centerIn: parent
         }
+
+        // ── Expanded panel: widget toggles inside the pill ─────────────────
+        Item {
+            id: expandedPanel
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                bottomMargin: 5
+            }
+            height: root.expandedPanelHeight
+            opacity: root.popoverOpen ? 1 : 0
+            visible: opacity > 0
+
+            Behavior on opacity {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
+
+            // Thin divider line
+            Rectangle {
+                id: expandedDivider
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                height: 1
+                color: Appearance.colors.colOutlineVariant
+                opacity: 0.5
+            }
+
+            // Button row
+            Row {
+                anchors.top: expandedDivider.bottom
+                anchors.topMargin: 8
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 4
+
+                // Widget toggle buttons
+                Repeater {
+                    model: OverlayContext.availableWidgets
+                    delegate: Item {
+                        property var wdata: modelData
+                        width: 36; height: 36
+
+                        readonly property bool isActive: Persistent.states.overlay.open.includes(wdata.identifier)
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.small
+                            color: parent.isActive
+                                ? Appearance.colors.colSecondaryContainer
+                                : "transparent"
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            iconSize: 20
+                            text: parent.wdata.materialSymbol
+                            color: parent.isActive
+                                ? Appearance.colors.colOnSecondaryContainer
+                                : Appearance.colors.colOnSurfaceVariant
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                const id = parent.wdata.identifier
+                                if (parent.isActive) {
+                                    Persistent.states.overlay.open =
+                                        Persistent.states.overlay.open.filter(t => t !== id)
+                                } else {
+                                    Persistent.states.overlay.open.push(id)
+                                    GlobalStates.overlayOpen = true
+                                    root.popoverOpen = false
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle {
+                    width: 1; height: 28
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Appearance.colors.colOutlineVariant
+                    opacity: 0.5
+                }
+
+                // Open full overlay button
+                Item {
+                    width: 36; height: 36
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.small
+                        color: "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        iconSize: 20
+                        text: "open_in_full"
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.popoverOpen = false
+                            GlobalStates.overlayOpen = true
+                        }
+                    }
+                }
+            }
         }
-
-    // Popover — slides down from below the island pill
-    IslandPopover {
-        id: islandPopover
-        open: root.popoverOpen
-        anchors.horizontalCenter: islandShape.horizontalCenter
-        anchors.top: islandShape.bottom
-        anchors.topMargin: 10
-    }
-
-    // Close popover when clicking anywhere on the overlay background
-    // (handled: popoverOpen toggled on islandMouseArea, so clicking island again closes it)
+        } // end islandShape
 }
+

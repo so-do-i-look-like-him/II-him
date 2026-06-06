@@ -34,7 +34,7 @@ Scope {
                 WlrLayershell.namespace: "quickshell:island"
                 WlrLayershell.layer: WlrLayer.Top
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                exclusiveZone: 64
+                exclusiveZone: islandContent.windowHeight
 
                 anchors {
                     top: true
@@ -42,7 +42,7 @@ Scope {
                     right: true
                 }
 
-                implicitHeight: 64
+                implicitHeight: islandContent.windowHeight
                 color: "transparent"
 
                 MouseArea {
@@ -52,7 +52,7 @@ Scope {
                     IslandContent {
                         id: islandContent
                         anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.top: parent.top
                     }
                 }
             }
