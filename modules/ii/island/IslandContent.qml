@@ -37,6 +37,7 @@ Item {
     function triggerWorkspaceShow() {
         // Don't trigger before config is loaded
         if (!Config.ready) return;
+        root.popoverOpen = false; // close island overlay — workspace takes priority
         // Only show if workspace actually changed
         if (activeWorkspaceId === lastShownWorkspaceId && showWorkspace) return;
         lastShownWorkspaceId = activeWorkspaceId;
@@ -141,6 +142,7 @@ Item {
     function triggerNotificationShow() {
         if (!Config.ready) return;
         if (Notifications.popupList.length === 0) return;
+        root.popoverOpen = false; // close island overlay — notification takes priority
         // Grab the latest popup notification
         var latestNotif = Notifications.popupList[Notifications.popupList.length - 1];
         if (latestNotif) {
@@ -839,7 +841,7 @@ Item {
 
         // Recording timer — shows on hover in the center
         Text {
-            opacity: (islandShape.isRecordingNow && islandShape.isHovered && !root.popoverOpen) ? 1 : 0
+            opacity: (islandShape.isRecordingNow && islandShape.isHovered && !root.popoverOpen && !islandShape.notificationActive) ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: root.recordingSeconds > 0 ? root.formatRecordingTime(root.recordingSeconds) : "0:00"
