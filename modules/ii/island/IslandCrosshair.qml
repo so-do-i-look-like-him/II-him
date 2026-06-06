@@ -31,19 +31,19 @@ Scope {
 
                 // Horizontal bar
                 Rectangle {
-                    color: "#ff3333"
+                    color: "#e53935"
                     width: 20; height: 2
                     anchors.centerIn: parent
                 }
                 // Vertical bar
                 Rectangle {
-                    color: "#ff3333"
+                    color: "#e53935"
                     width: 2; height: 20
                     anchors.centerIn: parent
                 }
                 // Center dot
                 Rectangle {
-                    color: "#ff3333"
+                    color: "#e53935"
                     width: 4; height: 4
                     radius: 2
                     anchors.centerIn: parent

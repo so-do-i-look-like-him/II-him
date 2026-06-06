@@ -825,7 +825,7 @@ Item {
 
         // Screen sharing text — shows on hover
         Text {
-            opacity: (islandShape.isScreenSharingNow && !islandShape.isRecordingNow && islandShape.isHovered) ? 1 : 0
+            opacity: (islandShape.isScreenSharingNow && !islandShape.isRecordingNow && islandShape.isHovered && !root.popoverOpen) ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: "Sharing Screen"
@@ -839,11 +839,11 @@ Item {
 
         // Recording timer — shows on hover in the center
         Text {
-            opacity: (islandShape.isRecordingNow && islandShape.isHovered) ? 1 : 0
+            opacity: (islandShape.isRecordingNow && islandShape.isHovered && !root.popoverOpen) ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             text: root.recordingSeconds > 0 ? root.formatRecordingTime(root.recordingSeconds) : "0:00"
-            color: "#ff6666"
+            color: "#e53935"
             font.pixelSize: 16
             font.bold: true
             font.family: "Inter"
@@ -865,7 +865,7 @@ Item {
                 symbol: root.isRecording ? "stop_circle" : "videocam"
                 label: root.isRecording ? "Stop recording" : "Record screen"
                 toggled: root.isRecording
-                toggledColor: "#cc2222"
+                toggledColor: "#e53935"
                 toggledIconColor: "white"
                 onAction: {
                     if (root.isRecording) {
