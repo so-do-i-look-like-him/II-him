@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 
 # Him's Full-System Installer for Illogical Impulse (ii)
-# Sets up the entire Hyprland environment + Him's custom QuickShell config.
+# Sets up the entire Hyprland environment + Him's custom QuickShell + Hyprland config.
 #
-# After install, the QuickShell config is consumed via a symlink:
-#   ~/.config/quickshell/ii -> $CLONE_DIR (the directory you ran this script from)
-# Local edits to QuickShell files should be made inside $CLONE_DIR and pushed
+# After install:
+#   ~/.config/quickshell/ii -> $CLONE_DIR (QuickShell config)
+#   ~/.config/hypr          -> $CLONE_DIR/hypr (Hyprland config)
+# Local edits should be made inside $CLONE_DIR and pushed
 # to the fork (https://github.com/so-do-i-look-like-him/II-him) to keep them in sync.
 
 set -euo pipefail
 
 # ----- Paths -----
-CONFIG_DIR="$HOME/.config/quickshell/ii"
-BACKUP_DIR="$HOME/.config/quickshell/ii_backup_$(date +%Y%m%d_%H%M%S)"
+QS_CONFIG_DIR="$HOME/.config/quickshell/ii"
+QS_BACKUP_DIR="$HOME/.config/quickshell/ii_backup_$(date +%Y%m%d_%H%M%S)"
+HYPR_CONFIG_DIR="$HOME/.config/hypr"
+HYPR_BACKUP_DIR="$HOME/.config/hypr_backup_$(date +%Y%m%d_%H%M%S)"
 CLONE_DIR=$(pwd)
 TEMP_DIR=""
 
@@ -27,9 +30,10 @@ trap cleanup EXIT
 # ----- Sanity-check the working directory (issue #6) -----
 if [ ! -d "$CLONE_DIR/modules" ] \
    || [ ! -d "$CLONE_DIR/services" ] \
-   || [ ! -f "$CLONE_DIR/shell.qml" ]; then
-    echo "❌ $CLONE_DIR does not look like the ii-him QuickShell repo."
-    echo "   Expected to find: modules/, services/, shell.qml"
+   || [ ! -f "$CLONE_DIR/shell.qml" ] \
+   || [ ! -d "$CLONE_DIR/hypr" ]; then
+    echo "❌ $CLONE_DIR does not look like the ii-him repo."
+    echo "   Expected to find: modules/, services/, shell.qml, hypr/"
     echo "   Please cd into your clone of so-do-i-look-like-him/II-him and re-run."
     exit 1
 fi
@@ -95,17 +99,28 @@ cd "$CLONE_DIR"
 echo "🎨 Applying Him's custom QuickShell (II-him)..."
 
 # Backup existing config (issue #7: avoid mv into existing dir; idempotent if already correct symlink)
-if [ -L "$CONFIG_DIR" ] && [ "$(readlink -f "$CONFIG_DIR")" = "$CLONE_DIR" ]; then
-    echo "🔗 $CONFIG_DIR already symlinks to this repo. Skipping backup."
-elif [ -e "$CONFIG_DIR" ] || [ -L "$CONFIG_DIR" ]; then
-    rm -rf "$BACKUP_DIR" 2>/dev/null || true   # timestamped path; collision effectively impossible
-    mv "$CONFIG_DIR" "$BACKUP_DIR"
-    echo "📦 Backed up existing config to $BACKUP_DIR"
+if [ -L "$QS_CONFIG_DIR" ] && [ "$(readlink -f "$QS_CONFIG_DIR")" = "$CLONE_DIR" ]; then
+    echo "🔗 $QS_CONFIG_DIR already symlinks to this repo. Skipping backup."
+elif [ -e "$QS_CONFIG_DIR" ] || [ -L "$QS_CONFIG_DIR" ]; then
+    rm -rf "$QS_BACKUP_DIR" 2>/dev/null || true
+    mv "$QS_CONFIG_DIR" "$QS_BACKUP_DIR"
+    echo "📦 Backed up existing QuickShell config to $QS_BACKUP_DIR"
 fi
+ln -s "$CLONE_DIR" "$QS_CONFIG_DIR"
+echo "🔗 Linked $QS_CONFIG_DIR -> $CLONE_DIR"
 
-# Create symlink
-ln -s "$CLONE_DIR" "$CONFIG_DIR"
-echo "🔗 Linked $CONFIG_DIR -> $CLONE_DIR"
+# ----- 5b. Symlink Hyprland config -----
+echo "🎨 Applying Hyprland config..."
+HYPR_DIR="$CLONE_DIR/hypr"
+if [ -L "$HYPR_CONFIG_DIR" ] && [ "$(readlink -f "$HYPR_CONFIG_DIR")" = "$HYPR_DIR" ]; then
+    echo "🔗 $HYPR_CONFIG_DIR already symlinks to $HYPR_DIR. Skipping backup."
+elif [ -e "$HYPR_CONFIG_DIR" ] || [ -L "$HYPR_CONFIG_DIR" ]; then
+    rm -rf "$HYPR_BACKUP_DIR" 2>/dev/null || true
+    mv "$HYPR_CONFIG_DIR" "$HYPR_BACKUP_DIR"
+    echo "📦 Backed up existing Hyprland config to $HYPR_BACKUP_DIR"
+fi
+ln -s "$HYPR_DIR" "$HYPR_CONFIG_DIR"
+echo "🔗 Linked $HYPR_CONFIG_DIR -> $HYPR_DIR"
 
 # ----- 6. Initialize remotes (issue #10: idempotent upstream add) -----
 echo "🔗 Setting up GitHub remotes..."
@@ -118,15 +133,22 @@ git remote -v
 
 # ----- 7. Make scripts executable (issue #11: check existence, chmod all .sh) -----
 echo "🔧 Making scripts executable..."
-SCRIPT="$CONFIG_DIR/scripts/detect-screenshare.sh"
+SCRIPT="$QS_CONFIG_DIR/scripts/detect-screenshare.sh"
 if [ -e "$SCRIPT" ]; then
     chmod +x "$SCRIPT"
 else
     echo "   ⚠️  $SCRIPT not found (was the repo updated?)"
 fi
 # Defensive: ensure any new .sh added to scripts/ is also executable
-if [ -d "$CONFIG_DIR/scripts" ]; then
-    find "$CONFIG_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} +
+if [ -d "$QS_CONFIG_DIR/scripts" ]; then
+    find "$QS_CONFIG_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} +
+fi
+# Also make hyprland scripts executable
+if [ -d "$HYPR_DIR/hyprland/scripts" ]; then
+    find "$HYPR_DIR/hyprland/scripts" -type f -name "*.sh" -exec chmod +x {} +
+fi
+if [ -d "$HYPR_DIR/custom/scripts" ]; then
+    find "$HYPR_DIR/custom/scripts" -type f -name "*.sh" -exec chmod +x {} +
 fi
 
 # ----- 8. Restart QuickShell (issue #12 + #13: graceful kill, log to file) -----
@@ -139,11 +161,11 @@ pkill -KILL -x quickshell 2>/dev/null || true
 
 QS_LOG="/tmp/qs-restart-$(date +%s).log"
 if command -v qs &>/dev/null; then
-    nohup qs -c "$CONFIG_DIR" >"$QS_LOG" 2>&1 &
+    nohup qs -c "$QS_CONFIG_DIR" >"$QS_LOG" 2>&1 &
 elif command -v quickshell &>/dev/null; then
-    nohup quickshell -c "$CONFIG_DIR" >"$QS_LOG" 2>&1 &
+    nohup quickshell -c "$QS_CONFIG_DIR" >"$QS_LOG" 2>&1 &
 else
-    echo "ℹ️  QuickShell binary not found. Start it manually: qs -c $CONFIG_DIR"
+    echo "ℹ️  QuickShell binary not found. Start it manually: qs -c $QS_CONFIG_DIR"
     QS_LOG=""
 fi
 
