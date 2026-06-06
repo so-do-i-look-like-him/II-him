@@ -83,7 +83,7 @@ git clone https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
 cd "$TEMP_DIR/dots-hyprland"
 
 echo "Running upstream installer... (you may need to press enter or select options)"
-if ! ./install.sh; then
+if ! ./setup install; then
     # Issue #5: gate continuation on explicit user confirmation
     echo ""
     echo "⚠️  Upstream installer failed."
