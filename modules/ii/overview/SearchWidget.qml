@@ -15,6 +15,13 @@ import qs.modules.common.functions
 Item { // Wrapper
     id: root
 
+    // When false, the inner ColumnLayout's OpacityMask layer is disabled.
+    // This avoids a QML color-compositing glitch where OpacityMask alpha
+    // multiplies with a translucent parent (the launcher fade) and produces
+    // color shifts at the rounded corners. The parent (Overview.qml) toggles
+    // this only while the launcher is fully opaque.
+    property bool useLayer: true
+
     readonly property string xdgConfigHome: Directories.config
     readonly property int typingDebounceInterval: 200
     readonly property int typingResultLimit: 6
@@ -128,7 +135,7 @@ Item { // Wrapper
             spacing: 0
 
             // clip: true
-            layer.enabled: true
+            layer.enabled: useLayer
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: searchWidgetContent.width

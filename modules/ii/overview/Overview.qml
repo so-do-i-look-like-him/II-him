@@ -16,12 +16,52 @@ Scope {
     property bool dontAutoCancelSearch: false
     property bool searchOnly: false
 
+    // Fade animation: 0 = transparent, 1 = opaque. Driven explicitly from
+    // Connections so the Behavior fires reliably. Used for both open (0 → 1)
+    // and close (1 → 0); the PanelWindow stays alive during close via the
+    // isClosing flag + closeResetTimer below.
+    property real fadeProgress: 0
+    // Keep the PanelWindow mounted while the close fade plays out.
+    property bool isClosing: false
+
+    Behavior on fadeProgress {
+        NumberAnimation {
+            duration: 400
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    // Slide offset for close animation: 0 = resting, positive = slid down
+    property real slideOffset: 0
+    Behavior on slideOffset {
+        NumberAnimation {
+            duration: 400
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Timer {
+        // Slightly longer than the fade duration so the PanelWindow is
+        // guaranteed visible for the full fade-out before it disappears.
+        id: closeResetTimer
+        interval: 460
+        repeat: false
+        onTriggered: overviewScope.isClosing = false
+    }
+
+    // If the panel is open at QML startup, sync fadeProgress = 1.
+    Component.onCompleted: {
+        if (GlobalStates.overviewOpen)
+            overviewScope.fadeProgress = 1;
+    }
+
     PanelWindow {
         id: panelWindow
         property string searchingText: ""
         readonly property HyprlandMonitor monitor: Hyprland.monitorFor(panelWindow.screen)
         property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
-        visible: GlobalStates.overviewOpen
+        // Keep the PanelWindow alive during the close fade-out.
+        visible: GlobalStates.overviewOpen || overviewScope.isClosing
 
         WlrLayershell.namespace: "quickshell:overview"
         WlrLayershell.layer: WlrLayer.Top
@@ -47,7 +87,19 @@ Scope {
                     overviewScope.dontAutoCancelSearch = false;
                     overviewScope.searchOnly = false;
                     GlobalFocusGrab.dismiss();
+                    // Start the close fade-out. fadeProgress animates 1 → 0 via
+                    // its Behavior; isClosing keeps the PanelWindow mounted
+                    // until closeResetTimer fires.
+                    overviewScope.isClosing = true;
+                    overviewScope.fadeProgress = 0;
+                    overviewScope.slideOffset = 300;
+                    closeResetTimer.restart();
                 } else {
+                    // Cancel any in-flight close reset, then start the open fade.
+                    closeResetTimer.stop();
+                    overviewScope.isClosing = false;
+                    overviewScope.fadeProgress = 1;
+                    overviewScope.slideOffset = 0;
                     if (!overviewScope.dontAutoCancelSearch) {
                         searchWidget.cancelSearch();
                     }
@@ -72,7 +124,12 @@ Scope {
 
         Column {
             id: columnLayout
-            visible: GlobalStates.overviewOpen
+            // Stay mounted while the close fade plays; only hide once fully transparent.
+            visible: opacity > 0.001
+            opacity: overviewScope.fadeProgress
+            transform: Translate {
+                y: overviewScope.slideOffset
+            }
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.top
@@ -89,6 +146,10 @@ Scope {
             SearchWidget {
                 id: searchWidget
                 anchors.horizontalCenter: parent.horizontalCenter
+                // Disable the inner OpacityMask layer while the launcher is
+                // translucent (avoids a color-compositing glitch at the rounded
+                // corners). Re-enable once fully opaque.
+                useLayer: overviewScope.fadeProgress >= 0.99
                 Synchronizer on searchingText {
                     property alias source: panelWindow.searchingText
                 }
