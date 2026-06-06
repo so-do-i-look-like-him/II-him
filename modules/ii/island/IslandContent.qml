@@ -276,13 +276,13 @@ Item {
 
         // Base width for current state — popoverOpen is highest priority (after osd)
         readonly property int baseWidth: islandShape.osdActive ? 220 :
-            root.popoverOpen ? 360 :
+            root.popoverOpen ? 220 :
             (islandShape.notificationActive ? islandShape.notifWidth :
             (islandShape.workspaceActive ? 160 :
             (isPlaying ? 180 :
             (isHovered ? 156 : 126))))
         readonly property int baseHeight: islandShape.osdActive ? 52 :
-            root.popoverOpen ? 44 :
+            root.popoverOpen ? 52 :
             (islandShape.notificationActive ? islandShape.notifHeight :
             (islandShape.workspaceActive ? 44 :
             (isPlaying ? 48 :
@@ -847,60 +847,32 @@ Item {
         Row {
             id: actionPanel
             anchors.centerIn: parent
-            spacing: 6
+            spacing: 10
             opacity: root.popoverOpen ? 1 : 0
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
-            // Screenshot region
+            // Record screen — videocam when idle, stop_circle when recording
             IslandActionButton {
-                symbol: "screenshot_region"
-                label: "Screenshot region"
+                symbol: root.isRecording ? "stop_circle" : "videocam"
+                label: root.isRecording ? "Stop recording" : "Record screen"
+                toggled: root.isRecording
+                toggledColor: Appearance.colors.colError
+                toggledIconColor: "white"
                 onAction: {
-                    root.popoverOpen = false
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "screenshot"])
-                }
-            }
-            // Screenshot full
-            IslandActionButton {
-                symbol: "photo_camera"
-                label: "Screenshot"
-                onAction: {
-                    root.popoverOpen = false
-                    Quickshell.execDetached(["bash", "-c", "grim - | wl-copy"])
-                }
-            }
-            // Record region
-            IslandActionButton {
-                symbol: "screen_record"
-                label: "Record region"
-                onAction: {
-                    root.popoverOpen = false
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "recordWithSound"])
-                }
-            }
-            // Record fullscreen
-            IslandActionButton {
-                symbol: "capture"
-                label: "Record screen"
-                onAction: {
-                    root.popoverOpen = false
-                    Quickshell.execDetached([Directories.recordScriptPath, "--fullscreen", "--sound"])
+                    if (root.isRecording) {
+                        Quickshell.execDetached(["pkill", "wf-recorder"])
+                    } else {
+                        root.popoverOpen = false
+                        Quickshell.execDetached([Directories.recordScriptPath, "--fullscreen", "--sound"])
+                    }
                 }
             }
 
-            // Divider
-            Rectangle {
-                width: 1; height: 28
-                anchors.verticalCenter: parent.verticalCenter
-                color: Appearance.colors.colOutlineVariant
-                opacity: 0.5
-            }
-
-            // Crosshair toggle
+            // Crosshair toggle — my_location (target/aim icon)
             IslandActionButton {
-                symbol: "point_scan"
-                label: "Crosshair"
+                symbol: "my_location"
+                label: Persistent.states.overlay.open.includes("crosshair") ? "Hide crosshair" : "Show crosshair"
                 toggled: Persistent.states.overlay.open.includes("crosshair")
                 onAction: {
                     const id = "crosshair"
@@ -913,24 +885,6 @@ Item {
                     }
                 }
             }
-
-            // Divider
-            Rectangle {
-                width: 1; height: 28
-                anchors.verticalCenter: parent.verticalCenter
-                color: Appearance.colors.colOutlineVariant
-                opacity: 0.5
-            }
-
-            // Open full overlay
-            IslandActionButton {
-                symbol: "open_in_full"
-                label: "Open overlay"
-                onAction: {
-                    root.popoverOpen = false
-                    GlobalStates.overlayOpen = true
-                }
-            }
         }
         } // end islandShape
 
@@ -940,26 +894,28 @@ Item {
         property string symbol: ""
         property string label: ""
         property bool toggled: false
+        property color toggledColor: Appearance.colors.colSecondaryContainer
+        property color toggledIconColor: Appearance.colors.colOnSecondaryContainer
         signal action()
 
-        width: 34; height: 34
+        width: 38; height: 38
 
         Rectangle {
             anchors.fill: parent
             radius: height / 2
             color: iab.toggled
-                ? Appearance.colors.colSecondaryContainer
+                ? iab.toggledColor
                 : (ma.containsMouse ? Appearance.colors.colLayer1Hover : "transparent")
             Behavior on color { ColorAnimation { duration: 120 } }
         }
 
         MaterialSymbol {
             anchors.centerIn: parent
-            iconSize: 18
+            iconSize: 20
             text: iab.symbol
             fill: iab.toggled ? 1 : 0
             color: iab.toggled
-                ? Appearance.colors.colOnSecondaryContainer
+                ? iab.toggledIconColor
                 : Appearance.colors.colOnSurfaceVariant
             Behavior on color { ColorAnimation { duration: 120 } }
         }
