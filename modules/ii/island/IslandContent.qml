@@ -160,8 +160,6 @@ Item {
 
     // --- POPOVER STATE ---
     property bool popoverOpen: false
-    readonly property int expandedPanelHeight: 52   // button row height inside pill
-    readonly property int windowHeight: popoverOpen ? 64 + expandedPanelHeight + 8 : 64
 
     // --- SCREEN RECORDING DETECTION ---
     property bool isRecording: false
@@ -263,8 +261,8 @@ Item {
     // Tide-like floating island: compact idle, soft stretched media pill
     Rectangle {
         id: islandShape
-        anchors.top: parent.top
-        anchors.topMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: 2.5
         anchors.horizontalCenter: parent.horizontalCenter
 
         property bool isPlaying: root.mediaPlaying
@@ -276,17 +274,26 @@ Item {
         readonly property bool notificationActive: root.showNotification && !root.osdActive
         readonly property bool workspaceActive: root.showWorkspace && !root.osdActive && !root.showNotification
 
-        // Base width for current state, expanded by recording indicator when active
-        readonly property int baseWidth: islandShape.osdActive ? 220 : (islandShape.notificationActive ? islandShape.notifWidth : (islandShape.workspaceActive ? 160 : (isPlaying ? 180 : (isHovered || root.popoverOpen ? 156 : 126))))
-        readonly property int pillWidth: root.popoverOpen ? Math.max(baseWidth, 280) : baseWidth
-        readonly property int baseHeight: islandShape.osdActive ? 52 : (islandShape.notificationActive ? islandShape.notifHeight : (islandShape.workspaceActive ? 44 : (isPlaying ? 48 : (isHovered ? 44 : 40))))
+        // Base width for current state — popoverOpen is highest priority (after osd)
+        readonly property int baseWidth: islandShape.osdActive ? 220 :
+            root.popoverOpen ? 360 :
+            (islandShape.notificationActive ? islandShape.notifWidth :
+            (islandShape.workspaceActive ? 160 :
+            (isPlaying ? 180 :
+            (isHovered ? 156 : 126))))
+        readonly property int baseHeight: islandShape.osdActive ? 52 :
+            root.popoverOpen ? 44 :
+            (islandShape.notificationActive ? islandShape.notifHeight :
+            (islandShape.workspaceActive ? 44 :
+            (isPlaying ? 48 :
+            (isHovered ? 44 : 40))))
         // Recording circle protrudes from the left — no width offset needed on the pill itself
         readonly property int recordingOffset: 0
         readonly property int recordingCircleSize: 40  // diameter of the protruding circles
 
-        width: islandShape.pillWidth + islandShape.recordingOffset
-        height: Math.max(islandShape.baseHeight, islandShape.isRecordingNow ? 44 : 0) + (root.popoverOpen ? root.expandedPanelHeight + 10 : 0)
-        radius: root.popoverOpen ? Appearance.rounding.large : Math.round(islandShape.baseHeight / 2)
+        width: islandShape.baseWidth + islandShape.recordingOffset
+        height: Math.max(islandShape.baseHeight, islandShape.isRecordingNow ? 44 : 0)
+        radius: Math.round(islandShape.height / 2)
 
         // Dynamic notification dimensions (measured from content)
         readonly property int notifWidth: {
@@ -361,8 +368,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: islandShape.isPlaying ? -55 : -18
-                opacity: (islandShape.osdActive || islandShape.workspaceActive || islandShape.notificationActive || ((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)) ? 0 : 1
-                visible: !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive
+                opacity: (root.popoverOpen || islandShape.osdActive || islandShape.workspaceActive || islandShape.notificationActive || ((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)) ? 0 : 1
+                visible: !root.popoverOpen && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive
                 Behavior on anchors.horizontalCenterOffset {
                     NumberAnimation { duration: 500; easing.type: Easing.OutBack }
                 }
@@ -374,7 +381,7 @@ Item {
                 color: Appearance.colors.colOnSurface
                 font.pixelSize: 17
                 font.bold: true
-                visible: !islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
+                visible: !root.popoverOpen && !islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: 0
                 Behavior on opacity { NumberAnimation { duration: 300 } }
@@ -391,8 +398,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: islandShape.isPlaying ? 55 : 18
-                opacity: (islandShape.osdActive || islandShape.workspaceActive || islandShape.notificationActive || ((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)) ? 0 : 1
-                visible: !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive
+                opacity: (root.popoverOpen || islandShape.osdActive || islandShape.workspaceActive || islandShape.notificationActive || ((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)) ? 0 : 1
+                visible: !root.popoverOpen && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive
                 Behavior on anchors.horizontalCenterOffset {
                     NumberAnimation { duration: 500; easing.type: Easing.OutBack }
                 }
@@ -414,8 +421,8 @@ Item {
                 id: visualizer
                 anchors.centerIn: parent
                 spacing: 3
-                visible: islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
-                opacity: islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered) ? 1 : 0
+                visible: !root.popoverOpen && islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
+                opacity: (!root.popoverOpen && islandShape.isPlaying && !islandShape.osdActive && !islandShape.workspaceActive && !islandShape.notificationActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)) ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 400 } }
 
                 Repeater {
@@ -445,8 +452,8 @@ Item {
                 id: workspaceContent
                 anchors.fill: parent
                 clip: true
-                visible: islandShape.workspaceActive
-                opacity: islandShape.workspaceActive ? 1 : 0
+                visible: !root.popoverOpen && islandShape.workspaceActive
+                opacity: (!root.popoverOpen && islandShape.workspaceActive) ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
 
                 // Scrolling workspace number row
@@ -493,8 +500,8 @@ Item {
                 id: notificationContent
                 anchors.fill: parent
                 clip: true
-                visible: islandShape.notificationActive
-                opacity: islandShape.notificationActive ? 1 : 0
+                visible: !root.popoverOpen && islandShape.notificationActive
+                opacity: (!root.popoverOpen && islandShape.notificationActive) ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
 
                 MouseArea {
@@ -607,8 +614,8 @@ Item {
             Item {
                 id: osdContent
                 anchors.fill: parent
-                visible: islandShape.osdActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
-                opacity: islandShape.osdActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered) ? 1 : 0
+                visible: !root.popoverOpen && islandShape.osdActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)
+                opacity: (!root.popoverOpen && islandShape.osdActive && !((islandShape.isRecordingNow || islandShape.isScreenSharingNow) && islandShape.isHovered)) ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 280; easing.type: Easing.InOutQuad } }
 
                 // Left: Icon
@@ -836,126 +843,137 @@ Item {
             anchors.centerIn: parent
         }
 
-        // ── Expanded panel: widget toggles inside the pill ─────────────────
-        Item {
-            id: expandedPanel
-            anchors {
-                left: parent.left
-                right: parent.right
-                bottom: parent.bottom
-                bottomMargin: 5
-            }
-            height: root.expandedPanelHeight
+        // ── Island action panel — shown when pill is clicked ────────────────
+        Row {
+            id: actionPanel
+            anchors.centerIn: parent
+            spacing: 6
             opacity: root.popoverOpen ? 1 : 0
             visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
-            Behavior on opacity {
-                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            // Screenshot region
+            IslandActionButton {
+                symbol: "screenshot_region"
+                label: "Screenshot region"
+                onAction: {
+                    root.popoverOpen = false
+                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "screenshot"])
+                }
+            }
+            // Screenshot full
+            IslandActionButton {
+                symbol: "photo_camera"
+                label: "Screenshot"
+                onAction: {
+                    root.popoverOpen = false
+                    Quickshell.execDetached(["bash", "-c", "grim - | wl-copy"])
+                }
+            }
+            // Record region
+            IslandActionButton {
+                symbol: "screen_record"
+                label: "Record region"
+                onAction: {
+                    root.popoverOpen = false
+                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "recordWithSound"])
+                }
+            }
+            // Record fullscreen
+            IslandActionButton {
+                symbol: "capture"
+                label: "Record screen"
+                onAction: {
+                    root.popoverOpen = false
+                    Quickshell.execDetached([Directories.recordScriptPath, "--fullscreen", "--sound"])
+                }
             }
 
-            // Thin divider line
+            // Divider
             Rectangle {
-                id: expandedDivider
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 14
-                anchors.rightMargin: 14
-                height: 1
+                width: 1; height: 28
+                anchors.verticalCenter: parent.verticalCenter
                 color: Appearance.colors.colOutlineVariant
                 opacity: 0.5
             }
 
-            // Button row
-            Row {
-                anchors.top: expandedDivider.bottom
-                anchors.topMargin: 8
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 4
-
-                // Widget toggle buttons
-                Repeater {
-                    model: OverlayContext.availableWidgets
-                    delegate: Item {
-                        property var wdata: modelData
-                        width: 36; height: 36
-
-                        readonly property bool isActive: Persistent.states.overlay.open.includes(wdata.identifier)
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Appearance.rounding.small
-                            color: parent.isActive
-                                ? Appearance.colors.colSecondaryContainer
-                                : "transparent"
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            iconSize: 20
-                            text: parent.wdata.materialSymbol
-                            color: parent.isActive
-                                ? Appearance.colors.colOnSecondaryContainer
-                                : Appearance.colors.colOnSurfaceVariant
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                const id = parent.wdata.identifier
-                                if (parent.isActive) {
-                                    Persistent.states.overlay.open =
-                                        Persistent.states.overlay.open.filter(t => t !== id)
-                                } else {
-                                    Persistent.states.overlay.open.push(id)
-                                    GlobalStates.overlayOpen = true
-                                    root.popoverOpen = false
-                                }
-                            }
-                        }
+            // Crosshair toggle
+            IslandActionButton {
+                symbol: "point_scan"
+                label: "Crosshair"
+                toggled: Persistent.states.overlay.open.includes("crosshair")
+                onAction: {
+                    const id = "crosshair"
+                    if (Persistent.states.overlay.open.includes(id)) {
+                        Persistent.states.overlay.open = Persistent.states.overlay.open.filter(t => t !== id)
+                    } else {
+                        Persistent.states.overlay.open.push(id)
+                        GlobalStates.overlayOpen = true
+                        root.popoverOpen = false
                     }
                 }
+            }
 
-                // Divider
-                Rectangle {
-                    width: 1; height: 28
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Appearance.colors.colOutlineVariant
-                    opacity: 0.5
-                }
+            // Divider
+            Rectangle {
+                width: 1; height: 28
+                anchors.verticalCenter: parent.verticalCenter
+                color: Appearance.colors.colOutlineVariant
+                opacity: 0.5
+            }
 
-                // Open full overlay button
-                Item {
-                    width: 36; height: 36
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Appearance.rounding.small
-                        color: "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
-                    }
-
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        iconSize: 20
-                        text: "open_in_full"
-                        color: Appearance.colors.colOnSurfaceVariant
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.popoverOpen = false
-                            GlobalStates.overlayOpen = true
-                        }
-                    }
+            // Open full overlay
+            IslandActionButton {
+                symbol: "open_in_full"
+                label: "Open overlay"
+                onAction: {
+                    root.popoverOpen = false
+                    GlobalStates.overlayOpen = true
                 }
             }
         }
         } // end islandShape
+
+    // ── Reusable action button component ─────────────────────────────────────
+    component IslandActionButton: Item {
+        id: iab
+        property string symbol: ""
+        property string label: ""
+        property bool toggled: false
+        signal action()
+
+        width: 34; height: 34
+
+        Rectangle {
+            anchors.fill: parent
+            radius: height / 2
+            color: iab.toggled
+                ? Appearance.colors.colSecondaryContainer
+                : (ma.containsMouse ? Appearance.colors.colLayer1Hover : "transparent")
+            Behavior on color { ColorAnimation { duration: 120 } }
+        }
+
+        MaterialSymbol {
+            anchors.centerIn: parent
+            iconSize: 18
+            text: iab.symbol
+            fill: iab.toggled ? 1 : 0
+            color: iab.toggled
+                ? Appearance.colors.colOnSecondaryContainer
+                : Appearance.colors.colOnSurfaceVariant
+            Behavior on color { ColorAnimation { duration: 120 } }
+        }
+
+        MouseArea {
+            id: ma
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: iab.action()
+        }
+
+        StyledToolTip { text: iab.label }
+    }
 }
+
 
