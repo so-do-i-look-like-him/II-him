@@ -13,8 +13,10 @@ Scope {
 
     property int screenGap: 6
 
+    // Standalone always-on-top crosshair (independent of overlay system)
+    IslandCrosshair {}
+
     Variants {
-        // For each monitor
         model: {
             const screens = Quickshell.screens;
             const list = Config.options.island.screenList;
@@ -30,20 +32,37 @@ Scope {
                 id: islandRoot
                 screen: islandLoader.modelData
 
-                // Island window — transparent, top layer, no keyboard focus
                 WlrLayershell.namespace: "quickshell:island"
                 WlrLayershell.layer: WlrLayer.Top
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 exclusiveZone: 64
 
-                anchors {
-                    top: true
-                    left: true
-                    right: true
-                }
+                anchors { top: true; left: true; right: true }
 
                 implicitHeight: 64
                 color: "transparent"
+
+                // Focus grab — active when popover is open.
+                // Any click outside the island window fires onCleared → close popover.
+                HyprlandFocusGrab {
+                    id: popoverGrab
+                    windows: [islandRoot]
+                    active: false
+                    onCleared: {
+                        if (!active) islandContent.popoverOpen = false
+                    }
+                }
+
+                Connections {
+                    target: islandContent
+                    function onPopoverOpenChanged() {
+                        if (islandContent.popoverOpen) {
+                            popoverGrab.active = true
+                        } else {
+                            popoverGrab.active = false
+                        }
+                    }
+                }
 
                 MouseArea {
                     id: hoverRegion

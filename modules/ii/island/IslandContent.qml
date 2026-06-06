@@ -10,7 +10,6 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.models
-import qs.modules.ii.overlay
 
 Item {
     id: root
@@ -866,7 +865,7 @@ Item {
                 symbol: root.isRecording ? "stop_circle" : "videocam"
                 label: root.isRecording ? "Stop recording" : "Record screen"
                 toggled: root.isRecording
-                toggledColor: Appearance.colors.colError
+                toggledColor: "#cc2222"
                 toggledIconColor: "white"
                 onAction: {
                     if (root.isRecording) {
@@ -916,25 +915,13 @@ Item {
                 opacity: 0.4
             }
 
-            // Crosshair toggle — pin it so it shows WITHOUT opening the full overlay
+            // Crosshair toggle — drives GlobalStates.crosshairOpen (standalone window, always on top)
             IslandActionButton {
-                id: crosshairBtn
-                readonly property bool xhairOn: Persistent.states.overlay.open.includes("crosshair")
+                readonly property bool xhairOn: GlobalStates.crosshairOpen
                 symbol: "my_location"
                 label: xhairOn ? "Hide crosshair" : "Show crosshair"
                 toggled: xhairOn
-                onAction: {
-                    if (xhairOn) {
-                        // Remove from open list → hides widget
-                        Persistent.states.overlay.open = Persistent.states.overlay.open.filter(t => t !== "crosshair")
-                        Persistent.states.overlay.crosshair.pinned = false
-                    } else {
-                        // Add + pin → shows without opening full overlay
-                        if (!Persistent.states.overlay.open.includes("crosshair"))
-                            Persistent.states.overlay.open.push("crosshair")
-                        Persistent.states.overlay.crosshair.pinned = true
-                    }
-                }
+                onAction: GlobalStates.crosshairOpen = !GlobalStates.crosshairOpen
             }
         }
         } // end islandShape
