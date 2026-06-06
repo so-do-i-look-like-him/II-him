@@ -39,7 +39,7 @@ if [ ! -d "$CLONE_DIR/modules" ] \
 fi
 
 echo "🚀 Starting Full-System Installation for Him's Setup..."
-echo "This will install end-4's dots-hyprland base, then apply your custom QuickShell config."
+echo "This will install end-4's dots-hyprland base, then apply your custom configs."
 
 # ----- 1. Sudo upfront -----
 sudo -v
@@ -76,14 +76,14 @@ fi
 echo "📦 Installing AUR packages with $AUR_HELPER: ${AUR_PKGS[*]}"
 $AUR_HELPER -S --needed --noconfirm "${AUR_PKGS[@]}"
 
-# ----- 4. Run end-4's base installer -----
+# ----- 4. Run end-4's base installer (deps + setups only, skip file copying) -----
 echo "⚙️  Installing base dots-hyprland (end-4)..."
 TEMP_DIR=$(mktemp -d)
 git clone https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
 cd "$TEMP_DIR/dots-hyprland"
 
-echo "Running upstream installer... (you may need to press enter or select options)"
-if ! ./setup install; then
+echo "Running upstream installer (--skip-allfiles)... (you may need to press enter or select options)"
+if ! ./setup install --skip-allfiles; then
     # Issue #5: gate continuation on explicit user confirmation
     echo ""
     echo "⚠️  Upstream installer failed."
@@ -94,8 +94,10 @@ if ! ./setup install; then
     esac
 fi
 
-# ----- 5. Return to repo, apply Him's QuickShell config -----
+# ----- 5. Return to repo, apply configs -----
 cd "$CLONE_DIR"
+
+# --- 5a. QuickShell symlink ---
 echo "🎨 Applying Him's custom QuickShell (II-him)..."
 
 # Backup existing config (issue #7: avoid mv into existing dir; idempotent if already correct symlink)
@@ -109,9 +111,24 @@ fi
 ln -s "$CLONE_DIR" "$QS_CONFIG_DIR"
 echo "🔗 Linked $QS_CONFIG_DIR -> $CLONE_DIR"
 
-# ----- 5b. Symlink Hyprland config -----
+# --- 5b. Hyprland symlink ---
 echo "🎨 Applying Hyprland config..."
 HYPR_DIR="$CLONE_DIR/hypr"
+
+# Capture user's custom overrides before replacing the directory
+USER_CUSTOM_DIR=""
+if [ -d "$HYPR_CONFIG_DIR/custom" ] && [ ! -L "$HYPR_CONFIG_DIR/custom" ]; then
+    USER_CUSTOM_DIR=$(mktemp -d)
+    cp -a "$HYPR_CONFIG_DIR/custom/." "$USER_CUSTOM_DIR/"
+    echo "📋 Captured existing custom overrides for restoration"
+fi
+
+# Rename stale hyprland.conf so lua config loads (upstream convention)
+if [ -f "$HYPR_CONFIG_DIR/hyprland.conf" ] && [ ! -L "$HYPR_CONFIG_DIR/hyprland.conf" ]; then
+    mv "$HYPR_CONFIG_DIR/hyprland.conf" "$HYPR_CONFIG_DIR/hyprland.conf.old"
+    echo "📝 Renamed hyprland.conf -> hyprland.conf.old (lua config takes over)"
+fi
+
 if [ -L "$HYPR_CONFIG_DIR" ] && [ "$(readlink -f "$HYPR_CONFIG_DIR")" = "$HYPR_DIR" ]; then
     echo "🔗 $HYPR_CONFIG_DIR already symlinks to $HYPR_DIR. Skipping backup."
 elif [ -e "$HYPR_CONFIG_DIR" ] || [ -L "$HYPR_CONFIG_DIR" ]; then
@@ -121,6 +138,14 @@ elif [ -e "$HYPR_CONFIG_DIR" ] || [ -L "$HYPR_CONFIG_DIR" ]; then
 fi
 ln -s "$HYPR_DIR" "$HYPR_CONFIG_DIR"
 echo "🔗 Linked $HYPR_CONFIG_DIR -> $HYPR_DIR"
+
+# Restore user's custom overrides into the symlinked repo dir
+if [ -n "$USER_CUSTOM_DIR" ] && [ -d "$USER_CUSTOM_DIR" ]; then
+    mkdir -p "$HYPR_DIR/custom"
+    cp -a "$USER_CUSTOM_DIR/." "$HYPR_DIR/custom/"
+    rm -rf "$USER_CUSTOM_DIR"
+    echo "♻️  Restored custom overrides into $HYPR_DIR/custom/"
+fi
 
 # ----- 6. Initialize remotes (issue #10: idempotent upstream add) -----
 echo "🔗 Setting up GitHub remotes..."
@@ -182,7 +207,7 @@ fi
 
 echo ""
 echo "✅ Full Installation Complete!"
-echo "Your system now has the end-4 base + your personal QuickShell tweaks."
+echo "Your system now has the end-4 base + your personal QuickShell + Hyprland configs."
 echo ""
 echo "💡 Island features:"
 echo "   • Clock + Audio Visualizer (cava)"
@@ -191,3 +216,7 @@ echo "   • Screen Sharing Indicator (PipeWire detection)"
 echo "   • OSD (brightness/volume)"
 echo "   • Workspace indicator (super hold)"
 echo "   • Inline notifications"
+echo ""
+echo "📂 Config locations:"
+echo "   QuickShell:  ~/.config/quickshell/ii -> $CLONE_DIR"
+echo "   Hyprland:    ~/.config/hypr          -> $HYPR_DIR"
