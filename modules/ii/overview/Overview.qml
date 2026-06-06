@@ -14,6 +14,7 @@ import Quickshell.Hyprland
 Scope {
     id: overviewScope
     property bool dontAutoCancelSearch: false
+    property bool searchOnly: false
 
     PanelWindow {
         id: panelWindow
@@ -44,6 +45,7 @@ Scope {
                 if (!GlobalStates.overviewOpen) {
                     searchWidget.disableExpandAnimation();
                     overviewScope.dontAutoCancelSearch = false;
+                    overviewScope.searchOnly = false;
                     GlobalFocusGrab.dismiss();
                 } else {
                     if (!overviewScope.dontAutoCancelSearch) {
@@ -94,7 +96,7 @@ Scope {
             Loader {
                 id: overviewLoader
                 anchors.horizontalCenter: parent.horizontalCenter
-                active: GlobalStates.overviewOpen && (Config?.options.overview.enable ?? true)
+                active: GlobalStates.overviewOpen && !overviewScope.searchOnly && (Config?.options.overview.enable ?? true)
                 sourceComponent: OverviewWidget {
                     screen: panelWindow.screen
                     visible: (panelWindow.searchingText == "")
@@ -151,6 +153,7 @@ Scope {
         description: "Toggles search on press"
 
         onPressed: {
+            overviewScope.searchOnly = true;
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
     }
@@ -183,6 +186,7 @@ Scope {
                 GlobalStates.superReleaseMightTrigger = true;
                 return;
             }
+            overviewScope.searchOnly = true;
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
     }
