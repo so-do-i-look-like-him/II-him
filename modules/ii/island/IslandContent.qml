@@ -276,7 +276,7 @@ Item {
 
         // Base width for current state — popoverOpen is highest priority (after osd)
         readonly property int baseWidth: islandShape.osdActive ? 220 :
-            root.popoverOpen ? 220 :
+            root.popoverOpen ? 300 :
             (islandShape.notificationActive ? islandShape.notifWidth :
             (islandShape.workspaceActive ? 160 :
             (isPlaying ? 180 :
@@ -847,12 +847,12 @@ Item {
         Row {
             id: actionPanel
             anchors.centerIn: parent
-            spacing: 10
+            spacing: 6
             opacity: root.popoverOpen ? 1 : 0
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
-            // Record screen — videocam when idle, stop_circle when recording
+            // Record screen — red stop when active
             IslandActionButton {
                 symbol: root.isRecording ? "stop_circle" : "videocam"
                 label: root.isRecording ? "Stop recording" : "Record screen"
@@ -869,19 +869,61 @@ Item {
                 }
             }
 
-            // Crosshair toggle — my_location (target/aim icon)
+            // Record region
             IslandActionButton {
-                symbol: "my_location"
-                label: Persistent.states.overlay.open.includes("crosshair") ? "Hide crosshair" : "Show crosshair"
-                toggled: Persistent.states.overlay.open.includes("crosshair")
+                symbol: "screenshot_region"
+                label: "Record region"
                 onAction: {
-                    const id = "crosshair"
-                    if (Persistent.states.overlay.open.includes(id)) {
-                        Persistent.states.overlay.open = Persistent.states.overlay.open.filter(t => t !== id)
+                    root.popoverOpen = false
+                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "recordWithSound"])
+                }
+            }
+
+            // Screenshot region
+            IslandActionButton {
+                symbol: "add_a_photo"
+                label: "Screenshot region"
+                onAction: {
+                    root.popoverOpen = false
+                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "screenshot"])
+                }
+            }
+
+            // Screenshot full screen
+            IslandActionButton {
+                symbol: "photo_camera"
+                label: "Screenshot"
+                onAction: {
+                    root.popoverOpen = false
+                    Quickshell.execDetached(["bash", "-c", "grim - | wl-copy"])
+                }
+            }
+
+            // Divider
+            Rectangle {
+                width: 1; height: 30
+                anchors.verticalCenter: parent.verticalCenter
+                color: Appearance.colors.colOutlineVariant
+                opacity: 0.4
+            }
+
+            // Crosshair toggle — pin it so it shows WITHOUT opening the full overlay
+            IslandActionButton {
+                id: crosshairBtn
+                readonly property bool xhairOn: Persistent.states.overlay.open.includes("crosshair")
+                symbol: "my_location"
+                label: xhairOn ? "Hide crosshair" : "Show crosshair"
+                toggled: xhairOn
+                onAction: {
+                    if (xhairOn) {
+                        // Remove from open list → hides widget
+                        Persistent.states.overlay.open = Persistent.states.overlay.open.filter(t => t !== "crosshair")
+                        Persistent.states.overlay.crosshair.pinned = false
                     } else {
-                        Persistent.states.overlay.open.push(id)
-                        GlobalStates.overlayOpen = true
-                        root.popoverOpen = false
+                        // Add + pin → shows without opening full overlay
+                        if (!Persistent.states.overlay.open.includes("crosshair"))
+                            Persistent.states.overlay.open.push("crosshair")
+                        Persistent.states.overlay.crosshair.pinned = true
                     }
                 }
             }
