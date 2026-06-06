@@ -10,6 +10,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.models
+import qs.modules.ii.overlay
 
 Item {
     id: root
@@ -156,6 +157,9 @@ Item {
             triggerNotificationShow();
         }
     }
+
+    // --- POPOVER STATE ---
+    property bool popoverOpen: false
 
     // --- SCREEN RECORDING DETECTION ---
     property bool isRecording: false
@@ -333,6 +337,11 @@ Item {
             id: islandMouseArea
             anchors.fill: parent
             hoverEnabled: true
+            onClicked: (mouse) => {
+                if (mouse.button === Qt.LeftButton) {
+                    root.popoverOpen = !root.popoverOpen
+                }
+            }
         }
 
         Item {
@@ -824,4 +833,16 @@ Item {
             anchors.centerIn: parent
         }
         }
+
+    // Popover — slides down from below the island pill
+    IslandPopover {
+        id: islandPopover
+        open: root.popoverOpen
+        anchors.horizontalCenter: islandShape.horizontalCenter
+        anchors.top: islandShape.bottom
+        anchors.topMargin: 10
+    }
+
+    // Close popover when clicking anywhere on the overlay background
+    // (handled: popoverOpen toggled on islandMouseArea, so clicking island again closes it)
 }
