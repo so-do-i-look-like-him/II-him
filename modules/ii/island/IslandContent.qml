@@ -258,6 +258,15 @@ Item {
         target: islandShape
     }
 
+    // Catch clicks outside the pill when popover is open → close it
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.popoverOpen
+        visible: enabled
+        z: -1  // behind the pill
+        onClicked: root.popoverOpen = false
+    }
+
     // Tide-like floating island: compact idle, soft stretched media pill
     Rectangle {
         id: islandShape
@@ -276,7 +285,7 @@ Item {
 
         // Base width for current state — popoverOpen is highest priority (after osd)
         readonly property int baseWidth: islandShape.osdActive ? 220 :
-            root.popoverOpen ? 300 :
+            root.popoverOpen ? 240 :
             (islandShape.notificationActive ? islandShape.notifWidth :
             (islandShape.workspaceActive ? 160 :
             (isPlaying ? 180 :
@@ -847,7 +856,7 @@ Item {
         Row {
             id: actionPanel
             anchors.centerIn: parent
-            spacing: 6
+            spacing: 5
             opacity: root.popoverOpen ? 1 : 0
             visible: opacity > 0
             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
@@ -940,7 +949,7 @@ Item {
         property color toggledIconColor: Appearance.colors.colOnSecondaryContainer
         signal action()
 
-        width: 38; height: 38
+        width: 32; height: 32
 
         Rectangle {
             anchors.fill: parent
@@ -953,7 +962,7 @@ Item {
 
         MaterialSymbol {
             anchors.centerIn: parent
-            iconSize: 20
+            iconSize: 18
             text: iab.symbol
             fill: iab.toggled ? 1 : 0
             color: iab.toggled
@@ -970,7 +979,6 @@ Item {
             onClicked: iab.action()
         }
 
-        StyledToolTip { text: iab.label }
     }
 }
 

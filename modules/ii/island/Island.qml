@@ -48,6 +48,7 @@ Scope {
                 MouseArea {
                     id: hoverRegion
                     anchors.fill: parent
+                    onClicked: islandContent.popoverOpen = false
 
                     IslandContent {
                         id: islandContent
