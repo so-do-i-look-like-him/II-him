@@ -46,6 +46,7 @@ Scope {
         if (GlobalStates.searchOpen) {
             searchScope.fadeProgress = 1;
             searchScope.slideOffset = 0;
+            searchWidget.focusSearchInput();
         }
     }
 
@@ -89,6 +90,7 @@ Scope {
                     if (!searchScope.dontAutoCancelSearch) {
                         searchWidget.cancelSearch();
                     }
+                    searchWidget.focusSearchInput();
                     GlobalFocusGrab.addDismissable(panelWindow);
                 }
             }
