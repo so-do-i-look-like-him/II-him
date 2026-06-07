@@ -27,7 +27,7 @@ Scope {
     }
 
     // Slide offset for close animation: 0 = resting, positive = slid down
-    property real slideOffset: 0
+    property real slideOffset: 300
     Behavior on slideOffset {
         NumberAnimation {
             duration: 400
@@ -46,8 +46,10 @@ Scope {
 
     // If the panel is open at QML startup, sync fadeProgress = 1.
     Component.onCompleted: {
-        if (GlobalStates.overviewOpen)
+        if (GlobalStates.overviewOpen) {
             overviewScope.fadeProgress = 1;
+            overviewScope.slideOffset = 0;
+        }
     }
 
     PanelWindow {

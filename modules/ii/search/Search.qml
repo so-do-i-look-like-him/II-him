@@ -27,7 +27,7 @@ Scope {
         }
     }
 
-    property real slideOffset: 0
+    property real slideOffset: 300
     Behavior on slideOffset {
         NumberAnimation {
             duration: 400
@@ -43,8 +43,10 @@ Scope {
     }
 
     Component.onCompleted: {
-        if (GlobalStates.searchOpen)
+        if (GlobalStates.searchOpen) {
             searchScope.fadeProgress = 1;
+            searchScope.slideOffset = 0;
+        }
     }
 
     PanelWindow {
