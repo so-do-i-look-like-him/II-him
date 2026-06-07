@@ -122,7 +122,7 @@ Item { // Wrapper
 
         Behavior on implicitHeight {
             id: searchHeightBehavior
-            enabled: GlobalStates.overviewOpen && root.showResults
+            enabled: (GlobalStates.overviewOpen || GlobalStates.searchOpen) && root.showResults
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
@@ -194,7 +194,8 @@ Item { // Wrapper
                     id: debounceTimer
                     interval: root.typingDebounceInterval
                     onTriggered: {
-                        resultModel.values = LauncherSearch.results ?? [];
+                        resultModel.values = (LauncherSearch.results ?? []).slice(0, root.typingResultLimit);
+                        root.focusFirstItem();
                     }
                 }
 

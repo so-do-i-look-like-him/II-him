@@ -177,6 +177,9 @@ Scope {
         function clipboardToggle() {
             searchScope.toggleClipboard();
         }
+        function emojiToggle() {
+            searchScope.toggleEmojis();
+        }
     }
 
     // ---- GlobalShortcuts ----

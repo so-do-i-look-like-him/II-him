@@ -28,27 +28,27 @@ Singleton {
 
     function addPersistent(window) {
         if (root.persistent.indexOf(window) === -1) {
-            root.persistent.push(window);
+            root.persistent = [...root.persistent, window];
         }
     }
 
     function removePersistent(window) {
-        var index = root.persistent.indexOf(window);
+        const index = root.persistent.indexOf(window);
         if (index !== -1) {
-            root.persistent.splice(index, 1);
+            root.persistent = root.persistent.filter(w => w !== window);
         }
     }
 
     function addDismissable(window) {
         if (root.dismissable.indexOf(window) === -1) {
-            root.dismissable.push(window);
+            root.dismissable = [...root.dismissable, window];
         }
     }
 
     function removeDismissable(window) {
-        var index = root.dismissable.indexOf(window);
+        const index = root.dismissable.indexOf(window);
         if (index !== -1) {
-            root.dismissable.splice(index, 1);
+            root.dismissable = root.dismissable.filter(w => w !== window);
         }
     }
 

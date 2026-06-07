@@ -13,15 +13,17 @@ import Quickshell.Io
 Singleton {
     id: root
     property string emojiScriptPath: `${Directories.config}/hypr/hyprland/scripts/fuzzel-emoji.sh`
-	property string lineBeforeData: "### DATA ###"
+    property string lineBeforeData: "### DATA ###"
     property list<var> list
+    property bool sloppySearch: Config.options?.search.sloppy ?? false
+    property real scoreThreshold: Config.options?.search?.scoreThreshold ?? 0.38
     readonly property var preparedEntries: list.map(a => ({
         name: Fuzzy.prepare(`${a}`),
         entry: a
     }))
     function fuzzyQuery(search: string): var {
         if (root.sloppySearch) {
-            const results = entries.slice(0, 100).map(str => ({
+            const results = root.list.slice(0, 100).map(str => ({
                 entry: str,
                 score: Levendist.computeTextMatchScore(str.toLowerCase(), search.toLowerCase())
             })).filter(item => item.score > root.scoreThreshold)
@@ -53,7 +55,11 @@ Singleton {
         root.list = emojis.map(line => line.trim())
     }
 
-    FileView { 
+    Component.onCompleted: {
+        root.load();
+    }
+
+    FileView {
         id: emojiFileView
         path: Qt.resolvedUrl(root.emojiScriptPath)
         onLoadedChanged: {

@@ -9,6 +9,16 @@ local hyprScripts = "$HOME/.config/hypr/hyprland/scripts"
 local qsIpcCall = "qs -c $qsConfig ipc call"
 local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 
+-- Prevent SUPER release from toggling search when SUPER is used as
+-- a modifier in a multi-key combo.  Dispatches the interrupt then
+-- runs the primary GlobalShortcut via hl.dispatch().
+local function with_interrupt(gs_name)
+    return function()
+        hl.dispatch(hl.dsp.global("quickshell:searchToggleReleaseInterrupt"))
+        hl.dispatch(hl.dsp.global(gs_name))
+    end
+end
+
 hl.bind("SUPER + SUPER_L", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
 hl.bind("SUPER + SUPER_R", hl.dsp.global("quickshell:searchToggleRelease"))
 hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
@@ -21,21 +31,23 @@ hl.bind("SUPER_L", hl.dsp.global("quickshell:workspaceNumber"),
     { ignore_mods = true, transparent = true, release = true })
 hl.bind("SUPER_R", hl.dsp.global("quickshell:workspaceNumber"),
     { ignore_mods = true, transparent = true, release = true })
-hl.bind("SUPER + Tab", hl.dsp.global("quickshell:overviewWorkspacesToggle"), { description = "Shell: Toggle overview" })
-hl.bind("SUPER + V", hl.dsp.global("quickshell:overviewClipboardToggle"))
-hl.bind("SUPER + Period", hl.dsp.global("quickshell:overviewEmojiToggle"))
-hl.bind("SUPER + A", hl.dsp.global("quickshell:sidebarLeftToggle"), { description = "Shell: Toggle left sidebar" })
-hl.bind("SUPER + ALT + A", hl.dsp.global("quickshell:sidebarLeftToggleDetach"))
-hl.bind("SUPER + B", hl.dsp.global("quickshell:sidebarLeftToggle"))
-hl.bind("SUPER + O", hl.dsp.global("quickshell:sidebarLeftToggle"))
-hl.bind("SUPER + N", hl.dsp.global("quickshell:sidebarRightToggle"), { description = "Shell: Toggle right sidebar" })
-hl.bind("SUPER + Slash", hl.dsp.global("quickshell:cheatsheetToggle"), { description = "Shell: Toggle cheatsheet" })
-hl.bind("SUPER + K", hl.dsp.global("quickshell:oskToggle"), { description = "Shell: Toggle on-screen keyboard" })
-hl.bind("SUPER + M", hl.dsp.global("quickshell:mediaControlsToggle"), { description = "Shell: Toggle media controls" })
-hl.bind("SUPER + G", hl.dsp.global("quickshell:overlayToggle"), { description = "Shell: Toggle widget overlay" })
-hl.bind("CTRL + ALT + Delete", hl.dsp.global("quickshell:sessionToggle"), { description = "Shell: Toggle session menu" })
-hl.bind("SUPER + J", hl.dsp.global("quickshell:barToggle"), { description = "Shell: Toggle bar" })
-hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"))
+hl.bind("SUPER + Tab", with_interrupt("quickshell:overviewWorkspacesToggle"), { description = "Shell: Toggle overview" })
+hl.bind("SUPER + V", hl.dsp.exec_cmd(qsIpcCall .. " search toggleReleaseInterrupt; " .. qsIpcCall .. " search clipboardToggle || pkill fuzzel || cliphist list | fuzzel --match-mode fzf --dmenu | cliphist decode | wl-copy"),
+    { description = "Utilities: Clipboard history >> clipboard" })
+hl.bind("SUPER + Period", hl.dsp.exec_cmd(qsIpcCall .. " search toggleReleaseInterrupt; " .. qsIpcCall .. " search emojiToggle || pkill fuzzel || " .. hyprScripts .. "/fuzzel-emoji.sh copy"),
+    { description = "Utilities: Emoji >> clipboard" })
+hl.bind("SUPER + A", with_interrupt("quickshell:sidebarLeftToggle"), { description = "Shell: Toggle left sidebar" })
+hl.bind("SUPER + ALT + A", with_interrupt("quickshell:sidebarLeftToggleDetach"))
+hl.bind("SUPER + B", with_interrupt("quickshell:sidebarLeftToggle"))
+hl.bind("SUPER + O", with_interrupt("quickshell:sidebarLeftToggle"))
+hl.bind("SUPER + N", with_interrupt("quickshell:sidebarRightToggle"), { description = "Shell: Toggle right sidebar" })
+hl.bind("SUPER + Slash", with_interrupt("quickshell:cheatsheetToggle"), { description = "Shell: Toggle cheatsheet" })
+hl.bind("SUPER + K", with_interrupt("quickshell:oskToggle"), { description = "Shell: Toggle on-screen keyboard" })
+hl.bind("SUPER + M", with_interrupt("quickshell:mediaControlsToggle"), { description = "Shell: Toggle media controls" })
+hl.bind("SUPER + G", with_interrupt("quickshell:overlayToggle"), { description = "Shell: Toggle widget overlay" })
+hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"),
+    { description = "Shell: Toggle session menu" })
+hl.bind("SUPER + J", with_interrupt("quickshell:barToggle"), { description = "Shell: Toggle bar" })
 hl.bind("SHIFT + SUPER + ALT + Slash", hl.dsp.exec_cmd("qs -p $HOME/.config/quickshell/$qsConfig/welcome.qml"))
 
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(qsIpcCall .. " brightness increment || brightnessctl s 5%+"),
@@ -47,48 +59,33 @@ hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-"),
     { locked = true, repeating = true })
 
-hl.bind("CTRL + SUPER + T", hl.dsp.global("quickshell:wallpaperSelectorToggle"),
+hl.bind("CTRL + SUPER + T", hl.dsp.exec_cmd(qsIpcCall .. " wallpaperSelector toggle || " .. qsScripts .. "/colors/switchwall.sh"),
     { description = "Shell: Change wallpaper" })
-hl.bind("CTRL + SUPER + ALT + T", hl.dsp.global("quickshell:wallpaperSelectorRandom"),
-    { description = "Shell: Random wallpaper" })
-hl.bind("CTRL + SUPER + SHIFT + D", hl.dsp.global("quickshell:toggleLightDark"),
-    { description = "Shell: Toggle light/dark mode" })
-hl.bind("CTRL + SUPER + T", hl.dsp.exec_cmd(qsIsAlive .. " || " .. qsScripts .. "/colors/switchwall.sh"))
 hl.bind("CTRL + SUPER + R", hl.dsp.exec_cmd("killall ydotool qs quickshell; qs -c $qsConfig &"),
     { description = "Shell: Restart widgets" })
 hl.bind("CTRL + SUPER + P", hl.dsp.global("quickshell:panelFamilyCycle"), { description = "Shell: Cycle panel family" })
 
 --##! Utilities
 --# Screenshot, Record, OCR, Color picker, Clipboard history
-hl.bind("SUPER + V", hl.dsp.exec_cmd(
-        qsIsAlive .. " || pkill fuzzel || cliphist list | fuzzel --match-mode fzf --dmenu | cliphist decode | wl-copy"),
-    { description = "Utilities: Clipboard history >> clipboard" })
-hl.bind("SUPER + Period", hl.dsp.exec_cmd(
-        qsIsAlive .. " || pkill fuzzel || " .. hyprScripts .. "/fuzzel-emoji.sh copy"),
-    { description = "Utilities: Emoji >> clipboard" })
-hl.bind("SUPER + SHIFT + S", hl.dsp.global("quickshell:regionScreenshot"), { description = "Utilities: Screen snip" })
-hl.bind("SUPER + SHIFT + S",
-    hl.dsp.exec_cmd(qsIsAlive .. " || pidof slurp || hyprshot --freeze --clipboard-only --mode region --silent"))
-hl.bind("SUPER + SHIFT + A", hl.dsp.global("quickshell:regionSearch"), { description = "Utilities: Google Lens" })
-hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd(qsIsAlive .. " || pidof slurp || " .. hyprScripts .. "/snip_to_search.sh"))
+-- (SUPER+V and SUPER+Period handled above via IPC + fallback)
+hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd(qsIpcCall .. " region screenshot || pidof slurp || hyprshot --freeze --clipboard-only --mode region --silent"),
+    { description = "Utilities: Screen snip" })
+hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd(qsIpcCall .. " region search || pidof slurp || " .. hyprScripts .. "/snip_to_search.sh"),
+    { description = "Utilities: Google Lens" })
 --# OCR
-hl.bind("SUPER + SHIFT + X", hl.dsp.global("quickshell:regionOcr"),
-    { description = "Utilities: Character recognition >> clipboard" })
-hl.bind("SUPER + SHIFT + T", hl.dsp.global("quickshell:screenTranslate"),
-    { description = "Utilities: Translate screen content" })
 hl.bind("SUPER + SHIFT + X", hl.dsp.exec_cmd(
-    qsIsAlive ..
-    " || pidof slurp || grim -g \"$(slurp $SLURP_ARGS)\" \"/tmp/ocr_image.png\" && tesseract \"/tmp/ocr_image.png\" stdout -l $(tesseract --list-langs | awk 'NR>1{print $1}' | tr '\\\\n' '+' | sed 's/\\\\+$/\\\\n/') | wl-copy && rm \"/tmp/ocr_image.png\""
-))
+    qsIpcCall .. " region ocr || pidof slurp || grim -g \"$(slurp $SLURP_ARGS)\" \"/tmp/ocr_image.png\" && tesseract \"/tmp/ocr_image.png\" stdout -l $(tesseract --list-langs | awk 'NR>1{print $1}' | tr '\\\\n' '+' | sed 's/\\\\+$/\\\\n/') | wl-copy && rm \"/tmp/ocr_image.png\""),
+    { description = "Utilities: Character recognition >> clipboard" })
+hl.bind("SUPER + SHIFT + T", with_interrupt("quickshell:screenTranslate"),
+    { description = "Utilities: Translate screen content" })
 --# Color picker
 hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("hyprpicker -a"),
     { description = "Utilities: Pick color #RRGGBB >> clipboard" })
 --# Recording stuff
-hl.bind("SUPER + SHIFT + R", hl.dsp.global("quickshell:regionRecord"),
+hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd(qsIpcCall .. " region record || " .. qsScripts .. "/videos/record.sh"),
     { locked = true, description = "Utilities: Record region (no sound)" })
-hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd(qsIsAlive .. " || " .. qsScripts .. "/videos/record.sh"), { locked = true })
-hl.bind("SUPER + ALT + R", hl.dsp.global("quickshell:regionRecord"), { locked = true })
-hl.bind("SUPER + ALT + R", hl.dsp.exec_cmd(qsIsAlive .. " || " .. qsScripts .. "/videos/record.sh"), { locked = true })
+hl.bind("SUPER + ALT + R", hl.dsp.exec_cmd(qsIpcCall .. " region record || " .. qsScripts .. "/videos/record.sh"),
+    { locked = true })
 hl.bind("CTRL + ALT + R", hl.dsp.exec_cmd(qsScripts .. "/videos/record.sh --fullscreen"), { locked = true })
 hl.bind("SUPER + SHIFT + ALT + R", hl.dsp.exec_cmd(qsScripts .. "/videos/record.sh --fullscreen --sound"),
     { locked = true, description = "Utilities: Record screen (with sound)" })
@@ -98,9 +95,9 @@ hl.bind("Print", hl.dsp.exec_cmd(grimhyprctl .. " - | wl-copy"),
     { locked = true, description = "Utilities: Screenshot >> clipboard" })
 hl.bind("CTRL + Print", hl.dsp.exec_cmd(
     "mkdir -p $(xdg-user-dir PICTURES)/Screenshots && " ..
-    grimhyprctl .. " $(xdg-user-dir PICTURES)/Screenshots/Screenshot_\"$(date '+%Y-%m-%d_%H.%M.%S')\".png"
-), { locked = true, non_consuming = true, description = "Utilities: Screenshot >> clipboard & file" })
-hl.bind("CTRL + Print", hl.dsp.exec_cmd(grimhyprctl .. " - | wl-copy"), { locked = true, non_consuming = true })
+    grimhyprctl .. " $(xdg-user-dir PICTURES)/Screenshots/Screenshot_\"$(date '+%Y-%m-%d_%H.%M.%S')\".png && " ..
+    grimhyprctl .. " - | wl-copy"
+), { locked = true, description = "Utilities: Screenshot >> file & clipboard" })
 --# AI
 hl.bind("SUPER + SHIFT + ALT + mouse:273", hl.dsp.exec_cmd(hyprScripts .. "/ai/primary-buffer-query.sh"),
     { description = "Utilities: Generate AI summary for selected text" })
@@ -109,7 +106,7 @@ hl.bind("SUPER + SHIFT + ALT + mouse:273", hl.dsp.exec_cmd(hyprScripts .. "/ai/p
 --##! Screen
 --# Zoom
 local function zoomfunction(value)
-    local zoomvalue = hl.get_config("cursor:zoom_factor")
+    local zoomvalue = hl.get_config("cursor:zoom_factor") or 1.0
     if (zoomvalue + value) > 3.0 then
         hl.config({ cursor = { zoom_factor = 3.0 } })
     elseif (zoomvalue + value) < 1.0 then
