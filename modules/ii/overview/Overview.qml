@@ -64,15 +64,23 @@ Scope {
         WlrLayershell.keyboardFocus: GlobalStates.overviewOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
-        mask: Region {
-            item: GlobalStates.overviewOpen ? columnLayout : null
-        }
-
         anchors {
             top: true
             bottom: true
             left: true
             right: true
+        }
+
+        // Catch clicks on the empty area around the grid so they
+        // don't pass through to windows below and trigger an
+        // unwanted GlobalFocusGrab dismiss.  Without this the
+        // PanelWindow mask clips input to the grid only, and
+        // clicks on the padded area fall through.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            z: -1
+            onClicked: GlobalStates.overviewOpen = false
         }
 
         Connections {

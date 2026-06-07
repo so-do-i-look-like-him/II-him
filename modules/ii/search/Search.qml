@@ -60,15 +60,20 @@ Scope {
         WlrLayershell.keyboardFocus: GlobalStates.searchOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
-        mask: Region {
-            item: GlobalStates.searchOpen ? columnLayout : null
-        }
-
         anchors {
             top: true
             bottom: true
             left: true
             right: true
+        }
+
+        // Catch clicks on the empty area so they don't pass through
+        // to windows below and trigger an unwanted dismiss.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            z: -1
+            onClicked: GlobalStates.searchOpen = false
         }
 
         Connections {
