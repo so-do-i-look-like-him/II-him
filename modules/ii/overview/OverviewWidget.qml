@@ -247,11 +247,13 @@ Item {
                         id: dragArea
                         anchors.fill: parent
                         hoverEnabled: true
+                        property bool mouseDragged: false
                         onEntered: hovered = true // For hover color change
                         onExited: hovered = false // For hover color change
                         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                         drag.target: parent
                         onPressed: (mouse) => {
+                            mouseDragged = false
                             root.draggingFromWorkspace = windowData?.workspace.id
                             window.pressed = true
                             window.Drag.active = true
@@ -260,26 +262,33 @@ Item {
                             window.Drag.hotSpot.y = mouse.y
                             // console.log(`[OverviewWindow] Dragging window ${windowData?.address} from position (${window.x}, ${window.y})`)
                         }
+                        onPositionChanged: (mouse) => {
+                            if (mouse.buttons & Qt.LeftButton)
+                                mouseDragged = true
+                        }
                         onReleased: {
                             const targetWorkspace = root.draggingTargetWorkspace
                             window.pressed = false
                             window.Drag.active = false
                             root.draggingFromWorkspace = -1
-                            if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
-                                Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${targetWorkspace}, follow = false, window = "address:${window.windowData?.address}" })`)
-                                updateWindowPosition.restart()
-                            }
-                            else {
-                                if (!window.windowData.floating) {
+                            if (mouseDragged) {
+                                if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
+                                    Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${targetWorkspace}, follow = false, window = "address:${window.windowData?.address}" })`)
                                     updateWindowPosition.restart()
-                                    return
                                 }
-                                const percentageX = (window.x - xOffset) / root.workspaceImplicitWidth
-                                const percentageY = (window.y - yOffset) / root.workspaceImplicitHeight
-                                Hyprland.dispatch(`hl.dsp.window.move({ x = "${percentageX * root.screen.width}", y = "${percentageY * root.screen.height}", window = "address:${window.windowData?.address}" })`)
+                                else {
+                                    if (!window.windowData.floating) {
+                                        updateWindowPosition.restart()
+                                        return
+                                    }
+                                    const percentageX = (window.x - xOffset) / root.workspaceImplicitWidth
+                                    const percentageY = (window.y - yOffset) / root.workspaceImplicitHeight
+                                    Hyprland.dispatch(`hl.dsp.window.move({ x = "${percentageX * root.screen.width}", y = "${percentageY * root.screen.height}", window = "address:${window.windowData?.address}" })`)
+                                }
                             }
                         }
                         onClicked: (event) => {
+                            if (mouseDragged) return;
                             if (!windowData) return;
 
                             if (event.button === Qt.LeftButton) {
