@@ -2,10 +2,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import Qt.labs.synchronizer
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -13,8 +10,6 @@ import Quickshell.Hyprland
 
 Scope {
     id: overviewScope
-    property bool dontAutoCancelSearch: false
-    property bool searchOnly: false
 
     // Fade animation: 0 = transparent, 1 = opaque. Driven explicitly from
     // Connections so the Behavior fires reliably. Used for both open (0 → 1)
@@ -57,7 +52,6 @@ Scope {
 
     PanelWindow {
         id: panelWindow
-        property string searchingText: ""
         readonly property HyprlandMonitor monitor: Hyprland.monitorFor(panelWindow.screen)
         property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
         // Keep the PanelWindow alive during the close fade-out.
@@ -83,9 +77,6 @@ Scope {
             target: GlobalStates
             function onOverviewOpenChanged() {
                 if (!GlobalStates.overviewOpen) {
-                    searchWidget.disableExpandAnimation();
-                    overviewScope.dontAutoCancelSearch = false;
-                    overviewScope.searchOnly = false;
                     GlobalFocusGrab.dismiss();
                     // Start the close fade-out. fadeProgress animates 1 → 0 via
                     // its Behavior; isClosing keeps the PanelWindow mounted
@@ -100,9 +91,6 @@ Scope {
                     overviewScope.isClosing = false;
                     overviewScope.fadeProgress = 1;
                     overviewScope.slideOffset = 0;
-                    if (!overviewScope.dontAutoCancelSearch) {
-                        searchWidget.cancelSearch();
-                    }
                     GlobalFocusGrab.addDismissable(panelWindow);
                 }
             }
@@ -117,11 +105,6 @@ Scope {
         implicitWidth: columnLayout.implicitWidth
         implicitHeight: columnLayout.implicitHeight
 
-        function setSearchingText(text) {
-            searchWidget.setSearchingText(text);
-            searchWidget.focusFirstItem();
-        }
-
         Column {
             id: columnLayout
             // Stay mounted while the close fade plays; only hide once fully transparent.
@@ -134,8 +117,8 @@ Scope {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.top
             }
-            topPadding: 300
-            spacing: -8
+            topPadding: 180
+            spacing: 0
 
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
@@ -143,52 +126,15 @@ Scope {
                 }
             }
 
-            SearchWidget {
-                id: searchWidget
+            OverviewWidget {
                 anchors.horizontalCenter: parent.horizontalCenter
-                // Disable the inner OpacityMask layer while the launcher is
-                // translucent (avoids a color-compositing glitch at the rounded
-                // corners). Re-enable once fully opaque.
-                useLayer: overviewScope.fadeProgress >= 0.99
-                Synchronizer on searchingText {
-                    property alias source: panelWindow.searchingText
-                }
-            }
-
-            Loader {
-                id: overviewLoader
-                anchors.horizontalCenter: parent.horizontalCenter
-                active: GlobalStates.overviewOpen && !overviewScope.searchOnly && (Config?.options.overview.enable ?? true)
-                sourceComponent: OverviewWidget {
-                    screen: panelWindow.screen
-                    visible: (panelWindow.searchingText == "")
-                }
+                screen: panelWindow.screen
             }
         }
-    }
-
-    function toggleClipboard() {
-        if (GlobalStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
-            GlobalStates.overviewOpen = false;
-            return;
-        }
-        overviewScope.dontAutoCancelSearch = true;
-        panelWindow.setSearchingText(Config.options.search.prefix.clipboard);
-        GlobalStates.overviewOpen = true;
-    }
-
-    function toggleEmojis() {
-        if (GlobalStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
-            GlobalStates.overviewOpen = false;
-            return;
-        }
-        overviewScope.dontAutoCancelSearch = true;
-        panelWindow.setSearchingText(Config.options.search.prefix.emojis);
-        GlobalStates.overviewOpen = true;
     }
 
     IpcHandler {
-        target: "search"
+        target: "overview"
 
         function toggle() {
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
@@ -202,23 +148,8 @@ Scope {
         function open() {
             GlobalStates.overviewOpen = true;
         }
-        function toggleReleaseInterrupt() {
-            GlobalStates.superReleaseMightTrigger = false;
-        }
-        function clipboardToggle() {
-            overviewScope.toggleClipboard();
-        }
     }
 
-    GlobalShortcut {
-        name: "searchToggle"
-        description: "Toggles search on press"
-
-        onPressed: {
-            overviewScope.searchOnly = true;
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
-        }
-    }
     GlobalShortcut {
         name: "overviewWorkspacesClose"
         description: "Closes overview on press"
@@ -233,48 +164,8 @@ Scope {
 
         onPressed: {
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
-        }
-    }
-    GlobalShortcut {
-        name: "searchToggleRelease"
-        description: "Toggles search on release"
-
-        onPressed: {
-            GlobalStates.superReleaseMightTrigger = true;
-        }
-
-        onReleased: {
-            if (!GlobalStates.superReleaseMightTrigger) {
-                GlobalStates.superReleaseMightTrigger = true;
-                return;
-            }
-            overviewScope.searchOnly = true;
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
-        }
-    }
-    GlobalShortcut {
-        name: "searchToggleReleaseInterrupt"
-        description: "Interrupts possibility of search being toggled on release. " + "This is necessary because GlobalShortcut.onReleased in quickshell triggers whether or not you press something else while holding the key. " + "To make sure this works consistently, use binditn = MODKEYS, catchall in an automatically triggered submap that includes everything."
-
-        onPressed: {
-            GlobalStates.superReleaseMightTrigger = false;
-        }
-    }
-    GlobalShortcut {
-        name: "overviewClipboardToggle"
-        description: "Toggle clipboard query on overview widget"
-
-        onPressed: {
-            overviewScope.toggleClipboard();
-        }
-    }
-
-    GlobalShortcut {
-        name: "overviewEmojiToggle"
-        description: "Toggle emoji query on overview widget"
-
-        onPressed: {
-            overviewScope.toggleEmojis();
+            if (GlobalStates.overviewOpen)
+                GlobalStates.searchOpen = false;
         }
     }
 }
