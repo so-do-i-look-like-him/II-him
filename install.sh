@@ -11,6 +11,9 @@
 
 set -euo pipefail
 
+# Track overall result for the exit message
+OVERALL_SUCCESS=true
+
 # ----- Paths -----
 QS_CONFIG_DIR="$HOME/.config/quickshell/ii"
 QS_BACKUP_DIR="$HOME/.config/quickshell/ii_backup_$(date +%Y%m%d_%H%M%S)"
@@ -44,17 +47,12 @@ echo "This will install end-4's dots-hyprland base, then apply your custom confi
 # ----- 1. Sudo upfront -----
 sudo -v
 
-# ----- 2. Ensure base tools (issue #3: robust base-devel check) -----
+# ----- 2. Ensure base tools -----
+# `--needed` makes this idempotent (skips already-installed packages).
+# Avoid `pacman -Qg base-devel`: it passes even with a partial install,
+# which would leave the build toolchain incomplete.
 echo "📦 Ensuring git and base-devel are installed..."
-NEED_PKGS=()
-command -v git &>/dev/null || NEED_PKGS+=(git)
-# `pacman -Qg` queries groups; -Qs matches a regex against any field, which is wrong here.
-if ! pacman -Qg base-devel &>/dev/null; then
-    NEED_PKGS+=(base-devel)
-fi
-if [ ${#NEED_PKGS[@]} -gt 0 ]; then
-    sudo pacman -S --needed --noconfirm "${NEED_PKGS[@]}"
-fi
+sudo pacman -S --needed --noconfirm git base-devel
 
 # ----- 2.5. Island runtime deps (issue #2 + #4: split pacman vs AUR, no error-swallowing) -----
 echo "📦 Installing island runtime dependencies..."
@@ -76,20 +74,24 @@ fi
 echo "📦 Installing AUR packages with $AUR_HELPER: ${AUR_PKGS[*]}"
 $AUR_HELPER -S --needed --noconfirm "${AUR_PKGS[@]}"
 
-# ----- 4. Run end-4's base installer (deps + setups only, skip file copying) -----
+# ----- 4. Run end-4's base installer (deps + setups) -----
+# Note: The --skip-hyprland and --skip-quickshell flags are parsed by
+# end-4's options.sh but have NO EFFECT inside the actual dependency
+# installer or setup phases -- both meta-packages are installed
+# unconditionally. We omit them here.
 echo "⚙️  Installing base dots-hyprland (end-4)..."
 TEMP_DIR=$(mktemp -d)
 git clone https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
 cd "$TEMP_DIR/dots-hyprland"
 
-echo "Running upstream installer (--skip-hyprland --skip-quickshell)... (you may need to press enter or select options)"
-if ! ./setup install --force --skip-hyprland --skip-quickshell; then
+echo "Running upstream installer... (you may need to press enter or select options)"
+if ! ./setup install --force; then
     # Issue #5: gate continuation on explicit user confirmation
     echo ""
     echo "⚠️  Upstream installer failed."
     read -rp "Continue with partial install anyway? [y/N] " CONTINUE
     case "$CONTINUE" in
-        [yY]|[yY][eE][sS]) echo "Continuing despite upstream failure — QuickShell may not work fully." ;;
+        [yY]|[yY][eE][sS]) echo "Continuing despite upstream failure -- QuickShell may not work fully."; OVERALL_SUCCESS=false ;;
         *) echo "Aborting. Re-run the script to retry."; exit 1 ;;
     esac
 fi
@@ -108,7 +110,7 @@ elif [ -e "$QS_CONFIG_DIR" ] || [ -L "$QS_CONFIG_DIR" ]; then
     mv "$QS_CONFIG_DIR" "$QS_BACKUP_DIR"
     echo "📦 Backed up existing QuickShell config to $QS_BACKUP_DIR"
 fi
-ln -s "$CLONE_DIR" "$QS_CONFIG_DIR"
+ln -sf "$CLONE_DIR" "$QS_CONFIG_DIR"
 echo "🔗 Linked $QS_CONFIG_DIR -> $CLONE_DIR"
 
 # --- 5b. Hyprland symlink ---
@@ -136,7 +138,7 @@ elif [ -e "$HYPR_CONFIG_DIR" ] || [ -L "$HYPR_CONFIG_DIR" ]; then
     mv "$HYPR_CONFIG_DIR" "$HYPR_BACKUP_DIR"
     echo "📦 Backed up existing Hyprland config to $HYPR_BACKUP_DIR"
 fi
-ln -s "$HYPR_DIR" "$HYPR_CONFIG_DIR"
+ln -sf "$HYPR_DIR" "$HYPR_CONFIG_DIR"
 echo "🔗 Linked $HYPR_CONFIG_DIR -> $HYPR_DIR"
 
 # Restore user's custom overrides into the symlinked repo dir
@@ -192,6 +194,7 @@ elif command -v quickshell &>/dev/null; then
 else
     echo "ℹ️  QuickShell binary not found. Start it manually: qs -c $QS_CONFIG_DIR"
     QS_LOG=""
+    OVERALL_SUCCESS=false
 fi
 
 if [ -n "$QS_LOG" ]; then
@@ -202,11 +205,16 @@ if [ -n "$QS_LOG" ]; then
         echo "⚠️  QuickShell failed to start. Log: $QS_LOG"
         echo "--- log tail ---"
         tail -20 "$QS_LOG" || true
+        OVERALL_SUCCESS=false
     fi
 fi
 
 echo ""
-echo "✅ Full Installation Complete!"
+if [ "$OVERALL_SUCCESS" = true ]; then
+    echo "✅ Full Installation Complete!"
+else
+    echo "⚠️  Installation finished with warnings (see above)."
+fi
 echo "Your system now has the end-4 base + your personal QuickShell + Hyprland configs."
 echo ""
 echo "💡 Island features:"
