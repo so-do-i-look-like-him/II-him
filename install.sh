@@ -1,230 +1,253 @@
 #!/usr/bin/env bash
-
-# Him's Full-System Installer for Illogical Impulse (ii)
-# Sets up the entire Hyprland environment + Him's custom QuickShell + Hyprland config.
-#
-# After install:
-#   ~/.config/quickshell/ii -> $CLONE_DIR (QuickShell config)
-#   ~/.config/hypr          -> $CLONE_DIR/hypr (Hyprland config)
-# Local edits should be made inside $CLONE_DIR and pushed
-# to the fork (https://github.com/so-do-i-look-like-him/II-him) to keep them in sync.
-
+# ───────────────────────────────────────────────────────
+#  Him's Simple Installer for II-him
+#  Usage: cd ~/II-him && bash install.sh
+# ───────────────────────────────────────────────────────
 set -euo pipefail
 
-# Track overall result for the exit message
-OVERALL_SUCCESS=true
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+QS_LINK="$HOME/.config/quickshell/ii"
+HYPR_LINK="$HOME/.config/hypr"
+QS_BACKUP="$HOME/.config/quickshell/ii_backup_$(date +%Y%m%d_%H%M%S)"
+HYPR_BACKUP="$HOME/.config/hypr_backup_$(date +%Y%m%d_%H%M%S)"
+END4_MARKER="$HOME/.local/share/ii-him/end4-installed"
 
-# ----- Paths -----
-QS_CONFIG_DIR="$HOME/.config/quickshell/ii"
-QS_BACKUP_DIR="$HOME/.config/quickshell/ii_backup_$(date +%Y%m%d_%H%M%S)"
-HYPR_CONFIG_DIR="$HOME/.config/hypr"
-HYPR_BACKUP_DIR="$HOME/.config/hypr_backup_$(date +%Y%m%d_%H%M%S)"
-CLONE_DIR=$(pwd)
-TEMP_DIR=""
-
-# ----- Cleanup: remove temp clone dir on exit (issue #9) -----
-cleanup() {
-    if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
-        rm -rf "$TEMP_DIR"
-    fi
-}
-trap cleanup EXIT
-
-# ----- Sanity-check the working directory (issue #6) -----
-if [ ! -d "$CLONE_DIR/modules" ] \
-   || [ ! -d "$CLONE_DIR/services" ] \
-   || [ ! -f "$CLONE_DIR/shell.qml" ] \
-   || [ ! -d "$CLONE_DIR/hypr" ]; then
-    echo "❌ $CLONE_DIR does not look like the ii-him repo."
-    echo "   Expected to find: modules/, services/, shell.qml, hypr/"
-    echo "   Please cd into your clone of so-do-i-look-like-him/II-him and re-run."
+# ── Sanity check ──────────────────────────────────────┬─
+if [ ! -d "$REPO_DIR/modules" ] || [ ! -f "$REPO_DIR/shell.qml" ] || [ ! -d "$REPO_DIR/hypr" ]; then
+    echo "❌ This doesn't look like the II-him repo."
+    echo "   Missing: modules/, shell.qml, or hypr/"
+    echo "   cd into your II-him clone and re-run."
     exit 1
 fi
 
-echo "🚀 Starting Full-System Installation for Him's Setup..."
-echo "This will install end-4's dots-hyprland base, then apply your custom configs."
+# ── Colours ───────────────────────────────────────────┬─
+RST='\033[0m'; RED='\033[0;31m'; GRN='\033[0;32m'; YLW='\033[0;33m'; BLU='\033[0;34m'
+info()  { echo -e "${BLU}ℹ${RST}  $*"; }
+ok()    { echo -e "${GRN}✔${RST}  $*"; }
+warn()  { echo -e "${YLW}⚠${RST}  $*"; }
+err()   { echo -e "${RED}✖${RST}  $*"; }
 
-# ----- 1. Sudo upfront -----
-sudo -v
+info "II-him installer starting…"
+echo ""
 
-# ----- 2. Ensure base tools -----
-# `--needed` makes this idempotent (skips already-installed packages).
-# Avoid `pacman -Qg base-devel`: it passes even with a partial install,
-# which would leave the build toolchain incomplete.
-echo "📦 Ensuring git and base-devel are installed..."
-sudo pacman -S --needed --noconfirm git base-devel
+# ═══════════════════════════════════════════════════════════
+#  1.  end-4 base dependencies & services
+# ═══════════════════════════════════════════════════════════
 
-# ----- 2.5. Island runtime deps (issue #2 + #4: split pacman vs AUR, no error-swallowing) -----
-echo "📦 Installing island runtime dependencies..."
-REPO_PKGS=(cava pipewire pipewire-pulse python3 wf-recorder)
-AUR_PKGS=(ttf-inter ttf-material-symbols-variable-git)
-sudo pacman -S --needed --noconfirm "${REPO_PKGS[@]}"
-
-# ----- 3. Detect AUR helper (must exist before we install AUR packages) -----
-if command -v yay &>/dev/null; then
-    AUR_HELPER="yay"
-elif command -v paru &>/dev/null; then
-    AUR_HELPER="paru"
+if [ -f "$END4_MARKER" ]; then
+    ok "end-4 base already installed (marker found). Skipping."
 else
-    echo "❌ Neither 'yay' nor 'paru' found."
-    echo "   Install one:  sudo pacman -S --needed base-devel git"
-    echo "   Then:         git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si"
-    exit 1
-fi
-echo "📦 Installing AUR packages with $AUR_HELPER: ${AUR_PKGS[*]}"
-$AUR_HELPER -S --needed --noconfirm "${AUR_PKGS[@]}"
-
-# ----- 4. Run end-4's base installer (deps + setups) -----
-# Note: The --skip-hyprland and --skip-quickshell flags are parsed by
-# end-4's options.sh but have NO EFFECT inside the actual dependency
-# installer or setup phases -- both meta-packages are installed
-# unconditionally. We omit them here.
-echo "⚙️  Installing base dots-hyprland (end-4)..."
-TEMP_DIR=$(mktemp -d)
-git clone https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
-cd "$TEMP_DIR/dots-hyprland"
-
-echo "Running upstream installer... (you may need to press enter or select options)"
-if ! ./setup install --force; then
-    # Issue #5: gate continuation on explicit user confirmation
     echo ""
-    echo "⚠️  Upstream installer failed."
-    read -rp "Continue with partial install anyway? [y/N] " CONTINUE
-    case "$CONTINUE" in
-        [yY]|[yY][eE][sS]) echo "Continuing despite upstream failure -- QuickShell may not work fully."; OVERALL_SUCCESS=false ;;
-        *) echo "Aborting. Re-run the script to retry."; exit 1 ;;
+    info "Step 1 — Install end-4's base dependencies & services"
+    echo "     This will:"
+    echo "     • Install required packages (pacman + AUR)"
+    echo "     • Set up Pipewire, services, permissions"
+    echo "     • Skip Hyprland and QuickShell configs (we bring our own)"
+    echo ""
+
+    # Confirm
+    read -rp "   Proceed with end-4 base install? [Y/n] " CONFIRM
+    case "$CONFIRM" in
+        [nN]|[nN][oO]) echo "   Skipped by user." ;;
+        *)
+            TEMP_DIR=$(mktemp -d)
+            trap 'rm -rf "$TEMP_DIR"' EXIT
+
+            info "Cloning end-4/dots-hyprland…"
+            git clone --depth=1 https://github.com/end-4/dots-hyprland.git "$TEMP_DIR/dots-hyprland"
+
+            cd "$TEMP_DIR/dots-hyprland"
+
+            echo ""
+            info "Running upstream installer (--skip-hyprland --skip-quickshell)…"
+            echo "     (You may need to press Enter or confirm prompts.)"
+            if ! ./setup install --force --skip-hyprland --skip-quickshell; then
+                echo ""
+                warn "Upstream installer had issues."
+                read -rp "   Continue anyway? [y/N] " CONTINUE
+                case "$CONTINUE" in
+                    [yY]|[yY][eE][sS]) warn "Continuing despite errors…" ;;
+                    *) err "Aborted."; exit 1 ;;
+                esac
+            fi
+
+            mkdir -p "$(dirname "$END4_MARKER")"
+            date > "$END4_MARKER"
+            ok "end-4 base installed. Marker saved."
+            cd "$REPO_DIR"
+            ;;
     esac
 fi
 
-# ----- 5. Return to repo, apply configs -----
-cd "$CLONE_DIR"
+# ═══════════════════════════════════════════════════════════
+#  2.  Island runtime deps (pacman)
+# ═══════════════════════════════════════════════════════════
 
-# --- 5a. QuickShell symlink ---
-echo "🎨 Applying Him's custom QuickShell (II-him)..."
-
-# Backup existing config (issue #7: avoid mv into existing dir; idempotent if already correct symlink)
-if [ -L "$QS_CONFIG_DIR" ] && [ "$(readlink -f "$QS_CONFIG_DIR")" = "$CLONE_DIR" ]; then
-    echo "🔗 $QS_CONFIG_DIR already symlinks to this repo. Skipping backup."
-elif [ -e "$QS_CONFIG_DIR" ] || [ -L "$QS_CONFIG_DIR" ]; then
-    rm -rf "$QS_BACKUP_DIR" 2>/dev/null || true
-    mv "$QS_CONFIG_DIR" "$QS_BACKUP_DIR"
-    echo "📦 Backed up existing QuickShell config to $QS_BACKUP_DIR"
+echo ""
+info "Step 2 — Install island runtime packages (pacman)"
+REPO_PKGS=(cava pipewire pipewire-pulse python3 wf-recorder inter-font)
+MISSING=()
+for pkg in "${REPO_PKGS[@]}"; do
+    pacman -Q "$pkg" &>/dev/null || MISSING+=("$pkg")
+done
+if [ ${#MISSING[@]} -eq 0 ]; then
+    ok "All runtime packages already installed."
+else
+    info "Installing: ${MISSING[*]}"
+    sudo pacman -S --needed --noconfirm "${MISSING[@]}"
+    ok "Runtime packages installed."
 fi
-ln -sf "$CLONE_DIR" "$QS_CONFIG_DIR"
-echo "🔗 Linked $QS_CONFIG_DIR -> $CLONE_DIR"
 
-# --- 5b. Hyprland symlink ---
-echo "🎨 Applying Hyprland config..."
-HYPR_DIR="$CLONE_DIR/hypr"
+# ═══════════════════════════════════════════════════════════
+#  3.  AUR packages
+# ═══════════════════════════════════════════════════════════
 
-# Capture user's custom overrides before replacing the directory
+echo ""
+info "Step 3 — Install AUR packages"
+# Note: ttf-material-symbols-variable-git is from AUR.
+# inter-font is from official repos (step 2) — avoids the broken
+# ttf-google-fonts-typewolf that ttf-inter now maps to.
+AUR_PKGS=(ttf-material-symbols-variable-git)
+
+# Detect AUR helper
+AUR_HELPER=""
+for helper in yay paru; do
+    if command -v "$helper" &>/dev/null; then
+        AUR_HELPER="$helper"
+        break
+    fi
+done
+if [ -z "$AUR_HELPER" ]; then
+    err "Neither yay nor paru found. Install one first."
+    err "  sudo pacman -S --needed base-devel git"
+    err "  git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si"
+    exit 1
+fi
+
+MISSING_AUR=()
+for pkg in "${AUR_PKGS[@]}"; do
+    pacman -Q "$pkg" &>/dev/null || MISSING_AUR+=("$pkg")
+done
+if [ ${#MISSING_AUR[@]} -eq 0 ]; then
+    ok "All AUR packages already installed."
+else
+    info "Installing with $AUR_HELPER: ${MISSING_AUR[*]}"
+    $AUR_HELPER -S --needed --noconfirm "${MISSING_AUR[@]}"
+    ok "AUR packages installed."
+fi
+
+# ═══════════════════════════════════════════════════════════
+#  4.  QuickShell symlink
+# ═══════════════════════════════════════════════════════════
+
+echo ""
+info "Step 4 — Link QuickShell config"
+if [ -L "$QS_LINK" ] && [ "$(readlink -f "$QS_LINK")" = "$REPO_DIR" ]; then
+    ok "QuickShell already linked to this repo."
+else
+    if [ -e "$QS_LINK" ] || [ -L "$QS_LINK" ]; then
+        rm -rf "$QS_BACKUP" 2>/dev/null || true
+        mv "$QS_LINK" "$QS_BACKUP"
+        info "Backed up existing config → $QS_BACKUP"
+    fi
+    ln -s "$REPO_DIR" "$QS_LINK"
+    ok "Linked $QS_LINK → $REPO_DIR"
+fi
+
+# ═══════════════════════════════════════════════════════════
+#  5.  Hyprland symlink (preserving custom/ overrides)
+# ═══════════════════════════════════════════════════════════
+
+echo ""
+info "Step 5 — Link Hyprland config"
+
+# Capture existing custom overrides before touching hypr dir
 USER_CUSTOM_DIR=""
-if [ -d "$HYPR_CONFIG_DIR/custom" ] && [ ! -L "$HYPR_CONFIG_DIR/custom" ]; then
+if [ -d "$HYPR_LINK/custom" ] && [ ! -L "$HYPR_LINK/custom" ]; then
     USER_CUSTOM_DIR=$(mktemp -d)
-    cp -a "$HYPR_CONFIG_DIR/custom/." "$USER_CUSTOM_DIR/"
-    echo "📋 Captured existing custom overrides for restoration"
+    cp -a "$HYPR_LINK/custom/." "$USER_CUSTOM_DIR/"
+    info "Captured existing custom/ overrides"
 fi
 
-# Rename stale hyprland.conf so lua config loads (upstream convention)
-if [ -f "$HYPR_CONFIG_DIR/hyprland.conf" ] && [ ! -L "$HYPR_CONFIG_DIR/hyprland.conf" ]; then
-    mv "$HYPR_CONFIG_DIR/hyprland.conf" "$HYPR_CONFIG_DIR/hyprland.conf.old"
-    echo "📝 Renamed hyprland.conf -> hyprland.conf.old (lua config takes over)"
+# Rename stale hyprland.conf so lua config takes over
+if [ -f "$HYPR_LINK/hyprland.conf" ] && [ ! -L "$HYPR_LINK/hyprland.conf" ]; then
+    mv "$HYPR_LINK/hyprland.conf" "$HYPR_LINK/hyprland.conf.old"
+    info "Renamed hyprland.conf → hyprland.conf.old (lua config takes over)"
 fi
 
-if [ -L "$HYPR_CONFIG_DIR" ] && [ "$(readlink -f "$HYPR_CONFIG_DIR")" = "$HYPR_DIR" ]; then
-    echo "🔗 $HYPR_CONFIG_DIR already symlinks to $HYPR_DIR. Skipping backup."
-elif [ -e "$HYPR_CONFIG_DIR" ] || [ -L "$HYPR_CONFIG_DIR" ]; then
-    rm -rf "$HYPR_BACKUP_DIR" 2>/dev/null || true
-    mv "$HYPR_CONFIG_DIR" "$HYPR_BACKUP_DIR"
-    echo "📦 Backed up existing Hyprland config to $HYPR_BACKUP_DIR"
+HYPR_DIR="$REPO_DIR/hypr"
+if [ -L "$HYPR_LINK" ] && [ "$(readlink -f "$HYPR_LINK")" = "$HYPR_DIR" ]; then
+    ok "Hyprland already linked to this repo."
+else
+    if [ -e "$HYPR_LINK" ] || [ -L "$HYPR_LINK" ]; then
+        rm -rf "$HYPR_BACKUP" 2>/dev/null || true
+        mv "$HYPR_LINK" "$HYPR_BACKUP"
+        info "Backed up existing config → $HYPR_BACKUP"
+    fi
+    ln -s "$HYPR_DIR" "$HYPR_LINK"
+    ok "Linked $HYPR_LINK → $HYPR_DIR"
 fi
-ln -sf "$HYPR_DIR" "$HYPR_CONFIG_DIR"
-echo "🔗 Linked $HYPR_CONFIG_DIR -> $HYPR_DIR"
 
-# Restore user's custom overrides into the symlinked repo dir
+# Restore custom overrides into the now-symlinked repo dir
 if [ -n "$USER_CUSTOM_DIR" ] && [ -d "$USER_CUSTOM_DIR" ]; then
     mkdir -p "$HYPR_DIR/custom"
     cp -a "$USER_CUSTOM_DIR/." "$HYPR_DIR/custom/"
     rm -rf "$USER_CUSTOM_DIR"
-    echo "♻️  Restored custom overrides into $HYPR_DIR/custom/"
+    ok "Restored custom overrides into $HYPR_DIR/custom/"
 fi
 
-# ----- 6. Initialize remotes (issue #10: idempotent upstream add) -----
-echo "🔗 Setting up GitHub remotes..."
-git remote set-url origin https://github.com/so-do-i-look-like-him/II-him.git
-# Upstream: end-4's full dots-hyprland (their QuickShell config lives inside this repo)
-if ! git remote get-url upstream &>/dev/null; then
-    git remote add upstream https://github.com/end-4/dots-hyprland.git
-fi
-git remote -v
+# ═══════════════════════════════════════════════════════════
+#  6.  Make scripts executable
+# ═══════════════════════════════════════════════════════════
 
-# ----- 7. Make scripts executable (issue #11: check existence, chmod all .sh) -----
-echo "🔧 Making scripts executable..."
-SCRIPT="$QS_CONFIG_DIR/scripts/detect-screenshare.sh"
-if [ -e "$SCRIPT" ]; then
-    chmod +x "$SCRIPT"
-else
-    echo "   ⚠️  $SCRIPT not found (was the repo updated?)"
-fi
-# Defensive: ensure any new .sh added to scripts/ is also executable
-if [ -d "$QS_CONFIG_DIR/scripts" ]; then
-    find "$QS_CONFIG_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} +
-fi
-# Also make hyprland scripts executable
-if [ -d "$HYPR_DIR/hyprland/scripts" ]; then
-    find "$HYPR_DIR/hyprland/scripts" -type f -name "*.sh" -exec chmod +x {} +
-fi
-if [ -d "$HYPR_DIR/custom/scripts" ]; then
-    find "$HYPR_DIR/custom/scripts" -type f -name "*.sh" -exec chmod +x {} +
-fi
+echo ""
+info "Step 6 — Make scripts executable"
+for dir in "$REPO_DIR/scripts" "$REPO_DIR/hypr/hyprland/scripts" "$REPO_DIR/hypr/custom/scripts"; do
+    if [ -d "$dir" ]; then
+        find "$dir" -type f -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
+        ok "Made scripts executable in $dir"
+    fi
+done
 
-# ----- 8. Restart QuickShell (issue #12 + #13: graceful kill, log to file) -----
-echo "🔄 Restarting QuickShell..."
-pkill -TERM -x qs         2>/dev/null || true
+# ═══════════════════════════════════════════════════════════
+#  7.  Restart QuickShell
+# ═══════════════════════════════════════════════════════════
+
+echo ""
+info "Step 7 — Restart QuickShell"
+
+pkill -TERM -x qs 2>/dev/null || true
 pkill -TERM -x quickshell 2>/dev/null || true
 sleep 1
-pkill -KILL -x qs         2>/dev/null || true
+pkill -KILL -x qs 2>/dev/null || true
 pkill -KILL -x quickshell 2>/dev/null || true
 
 QS_LOG="/tmp/qs-restart-$(date +%s).log"
-if command -v qs &>/dev/null; then
-    nohup qs -c "$QS_CONFIG_DIR" >"$QS_LOG" 2>&1 &
-elif command -v quickshell &>/dev/null; then
-    nohup quickshell -c "$QS_CONFIG_DIR" >"$QS_LOG" 2>&1 &
-else
-    echo "ℹ️  QuickShell binary not found. Start it manually: qs -c $QS_CONFIG_DIR"
-    QS_LOG=""
-    OVERALL_SUCCESS=false
-fi
+QS_BIN=""
+command -v qs &>/dev/null && QS_BIN="qs" || command -v quickshell &>/dev/null && QS_BIN="quickshell"
 
-if [ -n "$QS_LOG" ]; then
+if [ -n "$QS_BIN" ]; then
+    nohup "$QS_BIN" -c "$QS_LINK" >"$QS_LOG" 2>&1 &
     sleep 2
     if pgrep -x qs >/dev/null || pgrep -x quickshell >/dev/null; then
-        echo "✅ QuickShell restarted. Log: $QS_LOG"
+        ok "QuickShell restarted. Log: $QS_LOG"
     else
-        echo "⚠️  QuickShell failed to start. Log: $QS_LOG"
-        echo "--- log tail ---"
-        tail -20 "$QS_LOG" || true
-        OVERALL_SUCCESS=false
+        warn "QuickShell may not have started. Log: $QS_LOG"
+        tail -5 "$QS_LOG" 2>/dev/null || true
     fi
+else
+    warn "QuickShell binary not found. Start manually: qs -c $QS_LINK"
 fi
 
+# ── Done ───────────────────────────────────────────────┬─
+
 echo ""
-if [ "$OVERALL_SUCCESS" = true ]; then
-    echo "✅ Full Installation Complete!"
-else
-    echo "⚠️  Installation finished with warnings (see above)."
-fi
-echo "Your system now has the end-4 base + your personal QuickShell + Hyprland configs."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+ok "Installation complete!"
 echo ""
-echo "💡 Island features:"
-echo "   • Clock + Audio Visualizer (cava)"
-echo "   • Recording Indicator (wf-recorder detection)"
-echo "   • Screen Sharing Indicator (PipeWire detection)"
-echo "   • OSD (brightness/volume)"
-echo "   • Workspace indicator (super hold)"
-echo "   • Inline notifications"
+echo "  QuickShell:  $QS_LINK → $REPO_DIR"
+echo "  Hyprland:    $HYPR_LINK → $HYPR_DIR"
 echo ""
-echo "📂 Config locations:"
-echo "   QuickShell:  ~/.config/quickshell/ii -> $CLONE_DIR"
-echo "   Hyprland:    ~/.config/hypr          -> $HYPR_DIR"
+echo "  💡 Log out & back in for everything to take effect."
+echo "     Or run: qs -c $QS_LINK"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
